@@ -2,7 +2,7 @@ node_modules
 example
 test
 coverage
-pkgs
+./modules
 .env
 .github
 .vscode
