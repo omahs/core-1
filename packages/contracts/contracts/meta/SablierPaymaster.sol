@@ -2,7 +2,8 @@
 
 pragma solidity 0.8.10;
 
-import "https://github.com/sablierhq/sablier/blob/develop/packages/protocol/contracts/interfaces/ISablier.sol";
+import "./IStreamPaymaster.sol";
+import "./ISablier.sol";
 import "./IWETH.sol";
 
 /// @title todo
