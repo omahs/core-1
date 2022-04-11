@@ -4,14 +4,14 @@
 
 pragma solidity 0.8.10;
 
-import "../core/component/MetaTxnComponent.sol";
+import "../core/component/MetaTxComponent.sol";
 
-contract MetaTxnComponentMock is MetaTxnComponent {
+contract MetaTxnComponentMock is MetaTxComponent {
 
     event DidSomething(address sender, address forwarder);
 
     /// @dev describes the version and contract for GSN compatibility.
-    function versionRecipient() external override virtual view returns (string memory){
+    function versionRecipient() external override pure returns (string memory){
         return "0.0.1+opengsn.recipient.ComponentMock";
     }
 

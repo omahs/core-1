@@ -56,7 +56,7 @@ contract WhitelistVoting is MajorityVoting {
 
     /// @notice Returns the version of the GSN relay recipient
     /// @dev Describes the version and contract for GSN compatibility
-    function versionRecipient() external view virtual override returns (string memory) {
+    function versionRecipient() external virtual override pure returns (string memory) {
         return "0.0.1+opengsn.recipient.WhitelistVoting";
     }
 
