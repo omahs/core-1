@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "@opengsn/contracts/src/BasePaymaster.sol";
 
 import "../core/component/Component.sol";
+import "../core/acl/ACL.sol";
 
 /// @title The GSN paymaster paying for meta transaction
 /// @author Michael Heuer - Aragon Association - 2022
@@ -15,8 +16,10 @@ contract Paymaster is Component, BasePaymaster {
 
     bytes32 public constant PAYMASTER_SPONSORED_ROLE = keccak256("PAYMASTER_SPONSORED_ROLE");
     
-    string internal constant ERROR_NOT_SPONSORED = "ERROR_NOT_SPONSORED";
-    string internal constant ERROR_APPROVAL_DATA_LENGTH_INVALID = "ERROR_APPROVAL_DATA_LENGTH_INVALID";
+    /// @notice TODO
+    /// @param approvalDataLength TODO
+    /// @param relayedPaymasterDataLength TODO
+    error InvalidApprovalLength(uint256 approvalDataLength, uint256 relayedPaymasterDataLength);
 
     /// @dev Used for GSN IPaymaster compatability
     function versionPaymaster() external view override virtual returns (string memory){
@@ -62,19 +65,31 @@ contract Paymaster is Component, BasePaymaster {
     override
     virtual
     returns (bytes memory context, bool revertOnRecipientRevert) {
-        (signature, maxPossibleGas);
-        // require(approvalData.length == 0, ERROR_APPROVAL_DATA_LENGTH_INVALID);
-        // require(relayRequest.relayData.paymasterData.length == 0, ERROR_APPROVAL_DATA_LENGTH_INVALID);
+        (signature, maxPossibleGas); //to silence warnings
 
-        // require(
-        //     dao.hasPermission(
-        //         relayRequest.request.to,
-        //         relayRequest.request.from,
-        //         PAYMASTER_SPONSORED_ROLE,
-        //         relayRequest.relayData.paymasterData
-        //     ),
-        //     ERROR_NOT_SPONSORED
-        // );
+        // TODO explanation
+        if(approvalData.length != 0 
+        || relayRequest.relayData.paymasterData.length != 0) {
+            revert InvalidApprovalLength({
+                approvalDataLength: approvalData.length, 
+                relayedPaymasterDataLength: relayRequest.relayData.paymasterData.length
+            });
+        }
+
+        if(!dao.hasPermission(
+                relayRequest.request.to,
+                relayRequest.request.from,
+                PAYMASTER_SPONSORED_ROLE,
+                relayRequest.relayData.paymasterData
+            )
+        ) {
+            revert ACLData.ACLAuth({
+                here: address(this),
+                where: relayRequest.request.to,
+                who: relayRequest.request.from,
+                role: PAYMASTER_SPONSORED_ROLE
+            });
+        }
 
         return ("", false);
     }

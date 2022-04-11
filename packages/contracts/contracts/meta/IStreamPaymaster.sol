@@ -29,19 +29,31 @@ abstract contract IStreamPaymaster is Paymaster, TimeHelpers {
     override
     virtual
     returns (bytes memory context, bool revertOnRecipientRevert) {
-        (signature, maxPossibleGas);
-        require(approvalData.length == 0, ERROR_APPROVAL_DATA_LENGTH_INVALID);
-        require(relayRequest.relayData.paymasterData.length == 0, ERROR_APPROVAL_DATA_LENGTH_INVALID);
+        (signature, maxPossibleGas); //to silence warnings
 
-        require(
-            dao.hasPermission(
+        // TODO explanation
+        if(approvalData.length != 0 
+        || relayRequest.relayData.paymasterData.length != 0) {
+            revert InvalidApprovalLength({
+                approvalDataLength: approvalData.length, 
+                relayedPaymasterDataLength: relayRequest.relayData.paymasterData.length
+            });
+        }
+
+        if(!dao.hasPermission(
                 relayRequest.request.to,
                 relayRequest.request.from,
                 PAYMASTER_SPONSORED_ROLE,
                 relayRequest.relayData.paymasterData
-            ),
-            ERROR_NOT_SPONSORED
-        );
+            )
+        ) {
+            revert ACLData.ACLAuth({
+                here: address(this),
+                where: relayRequest.request.to,
+                who: relayRequest.request.from,
+                role: PAYMASTER_SPONSORED_ROLE
+            });
+        }
 
         // check cooldown
         uint64 currentTime = getTimestamp64();
