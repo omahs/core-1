@@ -2,9 +2,10 @@
 
 import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/proxy/Clones.sol";
 
-import {Permission, PluginManager} from "./PluginManager.sol";
-import {PluginERC1967Proxy} from "../utils/PluginERC1967Proxy.sol";
+import {Permission, IPluginManagerInterfaceId, PluginManagerSimple, PluginManagerClonable, PluginManagerUUPSUpgradeable, PluginManagerTransparent} from "./PluginManager.sol";
+import {PluginClones} from "../core/plugin/PluginClones.sol";
 import {PluginUUPSUpgradeable} from "../core/plugin/PluginUUPSUpgradeable.sol";
 import {PluginTransparentUpgradeable} from "../core/plugin/PluginTransparentUpgradeable.sol";
 import {DaoAuthorizableUpgradeable} from "../core/component/DaoAuthorizableUpgradeable.sol";
@@ -14,22 +15,24 @@ import {DAO} from "../core/DAO.sol";
 /// @notice Plugin Installer that has root permissions to install plugin on the dao and apply permissions.
 contract PluginInstaller {
     using ERC165Checker for address payable;
+    using Clones for address;
 
     bytes32 public constant INSTALL_PERMISSION_ID = keccak256("INSTALL_PERMISSION");
     bytes32 public constant UPDATE_PERMISSION_ID = keccak256("UPDATE_PERMISSION");
 
     struct InstallPlugin {
-        PluginManager manager;
+        IPluginManagerInterfaceId manager;
         bytes data;
     }
 
     struct UpdatePlugin {
-        PluginManager manager;
+        IPluginManagerInterfaceId manager;
         bytes data;
         uint16[3] oldVersion;
     }
 
     error InstallNotAllowed();
+    error ManagerNotSupported();
     error UpdateNotAllowed();
     error AlreadyThisVersion();
 
@@ -61,9 +64,67 @@ contract PluginInstaller {
             revert InstallNotAllowed();
         }
 
-        (address pluginAddress, Permission.ItemMultiTarget[] memory permissions) = plugin
-            .manager
-            .deploy(dao, plugin.data);
+        // Install depending on the kind of manager
+        address pluginAddress;
+        Permission.ItemMultiTarget[] memory permissions;
+
+        if (plugin.manager.PLUGIN_MANAGER_INTERFACE_ID == type(PluginManagerSimple).interfaceId) {
+            // Simple deploy
+            (pluginAddress, permissions) = plugin.manager.deploy(dao, plugin.data);
+        } else if (
+            plugin.manager.PLUGIN_MANAGER_INTERFACE_ID == type(PluginManagerClonable).interfaceId
+        ) {
+            // Simple clone
+            PluginManagerClonable pManager = PluginManagerClonable(plugin.manager);
+            address implAddress = pManager.getImplementationAddress();
+            // Pre init hook + clone
+            (bytes memory pluginInitData, bytes memory setupHookInitData) = pManager.setupPreHook(
+                dao,
+                plugin.data
+            );
+            pluginAddress = address(implAddress).clone();
+            // Init plugin
+            PluginClones(pluginAddress).initialize(pluginInitData);
+            // Complete the set up
+            (permissions) = pManager.setupHook(dao, PluginClones(pluginAddress), setupHookInitData);
+        } else if (
+            plugin.manager.PLUGIN_MANAGER_INTERFACE_ID ==
+            type(PluginManagerUUPSUpgradeable).interfaceId
+        ) {
+            // Create UUPS proxy
+            PluginManagerClonable pManager = PluginManagerUUPSUpgradeable(plugin.manager);
+            address implAddress = pManager.getImplementationAddress();
+            // Pre init hook + deploy proxy
+            (bytes memory pluginInitData, bytes memory setupHookInitData) = pManager.setupPreHook(
+                dao,
+                plugin.data
+            );
+            pluginAddress = createUupsProxy(implAddress, dao, pluginInitData);
+            // Complete the set up
+            (permissions) = pManager.setupHook(
+                dao,
+                PluginTransparentUpgradeable(pluginAddress),
+                setupHookInitData
+            );
+        } else if (
+            plugin.manager.PLUGIN_MANAGER_INTERFACE_ID == type(PluginManagerTransparent).interfaceId
+        ) {
+            // Create transparent proxy
+            PluginManagerClonable pManager = PluginManagerTransparent(plugin.manager);
+            address implAddress = pManager.getImplementationAddress();
+            // Pre init hook + deploy proxy
+            (bytes memory pluginInitData, bytes memory setupHookInitData) = pManager.setupPreHook(
+                dao,
+                plugin.data
+            );
+            pluginAddress = createUupsProxy(implAddress, dao, pluginInitData);
+            // Complete the set up
+            (permissions) = pManager.setupHook(
+                dao,
+                PluginTransparentUpgradeable(pluginAddress),
+                setupHookInitData
+            );
+        } else revert ManagerNotSupported();
 
         DAO(payable(dao)).bulkOnMultiTarget(permissions);
 
@@ -99,21 +160,49 @@ contract PluginInstaller {
             revert UpdateNotAllowed();
         }
 
-        bool isUUPS = _pluginAddr.supportsInterface(type(PluginUUPSUpgradeable).interfaceId);
+        // bool isUUPS = _pluginAddr.supportsInterface(type(PluginUUPSUpgradeable).interfaceId);
 
-        if (isUUPS) {
+        // Install depending on the kind of manager
+        address pluginAddress;
+        Permission.ItemMultiTarget[] memory permissions;
+
+        if (
+            plugin.manager.PLUGIN_MANAGER_INTERFACE_ID !=
+            type(PluginManagerUUPSUpgradeable).interfaceId &&
+            plugin.manager.PLUGIN_MANAGER_INTERFACE_ID == type(PluginManagerTransparent).interfaceId
+        ) {
+            revert ManagerNotSupported();
+        } else if (
+            plugin.manager.PLUGIN_MANAGER_INTERFACE_ID ==
+            type(PluginManagerUUPSUpgradeable).interfaceId
+        ) {
             DAO(_dao).grant(
                 pluginAddress,
                 address(plugin.manager),
                 keccak256("UPGRADE_PERMISSION")
             );
-            permissions = plugin.manager.update(dao, pluginAddress, plugin.oldVersion, plugin.data);
+
+            PluginManagerClonable pManager = PluginManagerUUPSUpgradeable(plugin.manager);
+            address implAddress = pManager.getImplementationAddress();
+            updateProxy(pluginAddress, implAddress);
+
             DAO(_dao).revoke(
                 pluginAddress,
                 address(plugin.manager),
                 keccak256("UPGRADE_PERMISSION")
             );
-        } else {
+
+            // Complete the update
+            (permissions) = pManager.setupHook(
+                dao,
+                PluginTransparentUpgradeable(pluginAddress),
+                plugin.data
+            );
+        } else if (
+            plugin.manager.PLUGIN_MANAGER_INTERFACE_ID == type(PluginManagerTransparent).interfaceId
+        ) {
+            // Just copied this text:
+
             // TODO 2: How can we check if the proxy is `Transparent` to do things accordingly ?
             // a. If admin is pluginInstaller, supportsInterface will return false, even when it's true, So below
             //    3 line code is wrong.
@@ -130,6 +219,30 @@ contract PluginInstaller {
             // PluginManager becomes the admin, does the upgrade, but PROBLEM is that
             // PluginInstaller after `update` call of plugin manager, can't change it back so it becomes admin again.
             // Only plugin manager can change it back to plugin installer which just complicates everything...
+
+            DAO(_dao).grant(
+                pluginAddress,
+                address(plugin.manager),
+                keccak256("UPGRADE_PERMISSION")
+            );
+
+            PluginManagerClonable pManager = PluginManagerTransparent(plugin.manager);
+            address implAddress = pManager.getImplementationAddress();
+            // TODO: ADAPT ACCORDINGLY
+            updateProxy(pluginAddress, implAddress);
+
+            DAO(_dao).revoke(
+                pluginAddress,
+                address(plugin.manager),
+                keccak256("UPGRADE_PERMISSION")
+            );
+
+            // Complete the update
+            (permissions) = pManager.setupHook(
+                dao,
+                PluginTransparentUpgradeable(pluginAddress),
+                plugin.data
+            );
         }
 
         DAO(_dao).bulkOnMultiTarget(permissions);

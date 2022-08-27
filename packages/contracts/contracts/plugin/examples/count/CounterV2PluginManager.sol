@@ -2,15 +2,15 @@
 
 pragma solidity 0.8.10;
 
-import '@openzeppelin/contracts/proxy/Clones.sol';
+import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {Permission, PluginManager} from "../../PluginManager.sol";
+import {Permission, PluginManagerUUPSUpgradeable} from "../../PluginManager.sol";
 import "./MultiplyHelper.sol";
 import "./CounterV2.sol";
 
-contract CounterV2PluginManager is PluginManager {
+contract CounterV2PluginManager is PluginManagerUUPSUpgradeable {
     using Clones for address;
     MultiplyHelper public multiplyHelperBase;
     CounterV2 public counterBase;
@@ -23,12 +23,26 @@ contract CounterV2PluginManager is PluginManager {
         counterBase = new CounterV2();
     }
 
-    function deploy(address dao, bytes memory data)
+    // Overriding the init data passed to the Plugin initialization
+    function setupPreHook(address dao, bytes memory _init)
         public
-        virtual
-        override
-        returns (address plugin, Permission.ItemMultiTarget[] memory permissions)
+        returns (bytes memory pluginInitData)
     {
+        // Encode the parameters that will be passed to initialize() on the Plugin
+        bytes memory initData = abi.encodeWithSelector(
+            bytes4(keccak256("initialize(address,address,uint256)")),
+            dao,
+            multiplyHelper,
+            _num
+        );
+        return initData;
+    }
+
+    function setupHook(
+        address dao,
+        PluginUUPSUpgradeable deployedPlugin,
+        bytes memory init
+    ) public virtual override returns (Permission.ItemMultiTarget[] memory permissions) {
         // This changes as in V2, initialize now expects 3 arguments..
         // Decode the parameters from the UI
         (address _multiplyHelper, uint256 _num, uint256 _newVariable) = abi.decode(
@@ -62,7 +76,7 @@ contract CounterV2PluginManager is PluginManager {
         permissions[0] = Permission.ItemMultiTarget(
             Permission.Operation.Grant,
             dao,
-            plugin,
+            deployedPlugin,
             NO_ORACLE,
             keccak256("EXEC_PERMISSION")
         );
@@ -70,7 +84,7 @@ contract CounterV2PluginManager is PluginManager {
         // Allows DAO to call Multiply on plugin Count
         permissions[1] = Permission.ItemMultiTarget(
             Permission.Operation.Grant,
-            plugin,
+            deployedPlugin,
             dao,
             NO_ORACLE,
             counterBase.MULTIPLY_PERMISSION_ID()
@@ -84,39 +98,42 @@ contract CounterV2PluginManager is PluginManager {
             permissions[2] = Permission.ItemMultiTarget(
                 Permission.Operation.Grant,
                 multiplyHelper,
-                plugin,
+                deployedPlugin,
                 NO_ORACLE,
                 multiplyHelperBase.MULTIPLY_PERMISSION_ID()
             );
         }
     }
 
-    // TODO: Add some advanced code for update permissions
-    function update(
+    /// @notice the function dev has to override/implement for the plugin update.
+    /// @param dao proxy address
+    /// @param pluginProxy proxy address
+    /// @param oldVersion the version plugin is updating from.
+    /// @param initData the other data that deploy needs.
+    /// @return permissions array of permissions that will be applied through plugin installations.
+    function updateHook(
         address dao,
-        address proxy,
+        address pluginProxy,
         uint16[3] calldata oldVersion,
-        bytes memory data
+        bytes memory initData
     ) public virtual override returns (Permission.ItemMultiTarget[] memory permissions) {
-        uint256 _newVariable;
+        // After having set the plugin proxy to getImplementationAddress()
 
-        // TODO: Shall we leave it here or make devs call `upgrade` from our abstract factory
-        // Just a way of reinforcing...
-        UUPSUpgradeable(proxy).upgradeTo(getImplementationAddress());
+        uint256 _newVariable;
 
         // Only
         if (oldVersion[0] == 1 && oldVersion[1] == 0) {
             (_newVariable) = abi.decode(data, (uint256));
-            CounterV2(proxy).setNewVariable(_newVariable);
+            CounterV2(pluginProxy).setNewVariable(_newVariable);
         }
 
         permissions = new Permission.ItemMultiTarget[](1);
 
-        // Just for the case of example...
+        // Permissions changed
         permissions[0] = Permission.ItemMultiTarget(
             Permission.Operation.Revoke,
             dao,
-            proxy,
+            pluginProxy,
             NO_ORACLE,
             multiplyHelperBase.MULTIPLY_PERMISSION_ID()
         );
@@ -136,8 +153,8 @@ contract CounterV2PluginManager is PluginManager {
 }
 
 contract TestCounterV2Manager is CounterV2PluginManager {
-    event PluginDeployed(address plugin, Permission.ItemMultiTarget[] permissions);
-    event PluginUpdated(address plugin, address dao, Permission.ItemMultiTarget[] permissions);
+    // event PluginDeployed(address plugin, Permission.ItemMultiTarget[] permissions);
+    // event PluginUpdated(address plugin, address dao, Permission.ItemMultiTarget[] permissions);
 
     constructor(MultiplyHelper _multiplyHelper) CounterV2PluginManager(_multiplyHelper) {}
 

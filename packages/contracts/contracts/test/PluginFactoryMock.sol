@@ -2,11 +2,11 @@
 
 pragma solidity 0.8.10;
 
-import {Permission, PluginManager} from "../plugin/PluginManager.sol";
+import {Permission, PluginManagerClonable} from "../plugin/PluginManager.sol";
 import "./MajorityVotingMock.sol";
 import "../utils/Proxy.sol";
 
-contract PluginManagerMock is PluginManager {
+contract PluginManagerMock is PluginManagerClonable {
     event NewPluginDeployed(address dao, bytes params);
 
     address public basePluginAddress;
