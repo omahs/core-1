@@ -26,27 +26,34 @@ contract CounterV2PluginManager is PluginManagerUUPSUpgradeable {
     // Overriding the init data passed to the Plugin initialization
     function setupPreHook(address dao, bytes memory _init)
         public
-        returns (bytes memory pluginInitData)
+        returns (bytes memory pluginInitData, bytes memory setupHookInitData)
     {
+        // This changes as in V2, initialize now expects 3 arguments..
+        // Decode the parameters from the UI
+        (address _multiplyHelper, uint256 _num, uint256 _newVariable) = abi.decode(
+            initData,
+            (address, uint256, uint256)
+        );
+        
         // Encode the parameters that will be passed to initialize() on the Plugin
-        bytes memory initData = abi.encodeWithSelector(
+        pluginInitData = abi.encodeWithSelector(
             bytes4(keccak256("initialize(address,address,uint256)")),
             dao,
             multiplyHelper,
             _num
         );
-        return initData;
+        setupHookInitData = initData;
     }
 
     function setupHook(
         address dao,
         PluginUUPSUpgradeable deployedPlugin,
-        bytes memory init
+        bytes memory initData
     ) public virtual override returns (Permission.ItemMultiTarget[] memory permissions) {
         // This changes as in V2, initialize now expects 3 arguments..
         // Decode the parameters from the UI
         (address _multiplyHelper, uint256 _num, uint256 _newVariable) = abi.decode(
-            data,
+            initData,
             (address, uint256, uint256)
         );
 
@@ -59,18 +66,6 @@ contract CounterV2PluginManager is PluginManagerUUPSUpgradeable {
             multiplyHelper = address(multiplyHelperBase).clone();
             MultiplyHelper(multiplyHelper).initialize(dao);
         }
-
-        // Encode the parameters that will be passed to initialize() on the Plugin
-        bytes memory initData = abi.encodeWithSelector(
-            bytes4(keccak256("initialize(address,uint256)")),
-            multiplyHelper,
-            _num,
-            _newVariable
-        );
-
-        // Deploy the Plugin itself, make it point to the implementation and
-        // pass it the initialization params
-        plugin = address(new ERC1967Proxy(getImplementationAddress(), initData));
 
         // Allows plugin Count to call execute on DAO
         permissions[0] = Permission.ItemMultiTarget(

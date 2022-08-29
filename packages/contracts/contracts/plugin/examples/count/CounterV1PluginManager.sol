@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.10;
 
-import '@openzeppelin/contracts/proxy/Clones.sol';
+import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {Permission, PluginManagerSimple, PluginManagerClonable, PluginManagerUUPSUpgradeable, PluginManagerTransparent} from "../../PluginManager.sol";
@@ -39,7 +39,7 @@ contract CounterV1PluginManager is PluginManagerSimple {
         if (_multiplyHelper == address(0)) {
             // Deploy some internal helper contract for the Plugin
             multiplyHelper = address(multiplyHelperBase).clone();
-            MultiplyHelper(multiplyHelper).initialize(dao);   // DEVELOPER HAS TO REMEMBER THIS => ACCEPTABLE
+            MultiplyHelper(multiplyHelper).initialize(dao); // DEVELOPER HAS TO REMEMBER THIS => ACCEPTABLE
         }
 
         // Encode the parameters that will be passed to initialize() on the Plugin
@@ -53,7 +53,7 @@ contract CounterV1PluginManager is PluginManagerSimple {
         // Deploy the Plugin itself, make it point to the implementation and
         // pass it the initialization params
         deployedPlugin = address(new ERC1967Proxy(getImplementationAddress(), initData));
-        
+
         // Allows plugin Count to call execute on DAO
         permissions[0] = Permission.ItemMultiTarget(
             Permission.Operation.Grant,
@@ -92,7 +92,6 @@ contract CounterV1PluginManager is PluginManagerSimple {
     }
 }
 
-
 contract CounterV1PluginManager_C is PluginManagerClonable {
     MultiplyHelper public multiplyHelperBase;
     CounterV1 public counterBase;
@@ -105,25 +104,29 @@ contract CounterV1PluginManager_C is PluginManagerClonable {
     }
 
     // Overriding the init data passed to the Plugin initialization
-    function setupPreHook(address dao, bytes memory _init) public returns (bytes memory pluginInitData) {
+    function setupPreHook(address dao, bytes memory initData)
+        public
+        returns (bytes memory pluginInitData, bytes memory setupHookInitData)
+    {
+        (address _multiplyHelper, uint256 _num) = abi.decode(init, (address, uint256));
+
         // Encode the parameters that will be passed to initialize() on the Plugin
-        bytes memory initData = abi.encodeWithSelector(
+        pluginInitData = abi.encodeWithSelector(
             bytes4(keccak256("initialize(address,address,uint256)")),
             dao,
             multiplyHelper,
             _num
         );
-        return initData;
+        setupHookInitData = initData;
     }
 
-    function setupHook(address dao, PluginClones deployedPlugin, bytes memory init)
-        public
-        virtual
-        override
-        returns (Permission.ItemMultiTarget[] memory permissions)
-    {
+    function setupHook(
+        address dao,
+        PluginClones deployedPlugin,
+        bytes memory initData
+    ) public virtual override returns (Permission.ItemMultiTarget[] memory permissions) {
         // Decode the parameters from the UI
-        (address _multiplyHelper, uint256 _num) = abi.decode(init, (address, uint256));
+        (address _multiplyHelper, uint256 _num) = abi.decode(initData, (address, uint256));
 
         address multiplyHelper = _multiplyHelper;
 
@@ -173,7 +176,6 @@ contract CounterV1PluginManager_C is PluginManagerClonable {
         return "(address multiplyHelper, uint num)";
     }
 }
-
 
 contract CounterV1PluginManager_U is PluginManagerUUPSUpgradeable {
     using Clones for address;
@@ -189,24 +191,28 @@ contract CounterV1PluginManager_U is PluginManagerUUPSUpgradeable {
     }
 
     // Overriding the init data passed to the Plugin initialization
-    function setupPreHook(address dao, bytes memory _init) public returns (bytes memory pluginInitData) {
+    function setupPreHook(address dao, bytes memory _init)
+        public
+        returns (bytes memory pluginInitData, bytes memory setupHookInitData)
+    {
+        (address _multiplyHelper, uint256 _num) = abi.decode(init, (address, uint256));
+
         // Encode the parameters that will be passed to initialize() on the Plugin
-        bytes memory initData = abi.encodeWithSelector(
+        pluginInitData = abi.encodeWithSelector(
             bytes4(keccak256("initialize(address,address,uint256)")),
             dao,
             multiplyHelper,
             _num
         );
-        return initData;
+        setupHookInitData = initData;
     }
 
     // Explicitly deploy any internal helpers
-    function setupHook(address dao, PluginUUPSUpgradeable deployedPlugin, bytes memory init)
-        public
-        virtual
-        override
-        returns (Permission.ItemMultiTarget[] memory permissions)
-    {
+    function setupHook(
+        address dao,
+        PluginUUPSUpgradeable deployedPlugin,
+        bytes memory init
+    ) public virtual override returns (Permission.ItemMultiTarget[] memory permissions) {
         // Decode the parameters from the UI
         (address _multiplyHelper, uint256 _num) = abi.decode(init, (address, uint256));
 
@@ -258,15 +264,6 @@ contract CounterV1PluginManager_U is PluginManagerUUPSUpgradeable {
         return "(address multiplyHelper, uint num)";
     }
 }
-
-
-
-
-
-
-
-
-
 
 //////////////////////////////////////////////////////
 
