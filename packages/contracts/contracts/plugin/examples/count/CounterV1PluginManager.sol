@@ -18,12 +18,47 @@ contract CounterV1PluginManager is PluginManager {
     CounterV1 public counterBase;
 
     address private constant NO_ORACLE = address(0);
+    address private constant DAO_ADDRESS = address(-1);
+    bytes32 private constant EXECUTE_PERMISSION_ID = keccak256("EXECUTE_PERMISSION");
 
     constructor() {
         multiplyHelperBase = new MultiplyHelper();
         counterBase = new CounterV1();
     }
 
+    function deploy(bytes memory data)
+        public
+        virtual
+        returns (Permission.ItemMultiTarget[] permissions)
+    {
+        address multiplyAddress = createProxy(multiplyHelperBase, data);
+
+        bytes memory pluginData = abi.encode(multiplyAddress, (address));
+        address pluginAddress = createProxy(counterBase, pluginData);
+
+        // TODO: Remove grant, assume always grant
+        permissions.push(
+            Permission.ItemMultiTarget(
+                Permission.Operation.Grant,
+                pluginAddress,
+                multiplyAddress,
+                NO_ORACLE,
+                EXECUTE_PERMISSION_ID
+            )
+        );
+        permissions.push(
+            Permission.ItemMultiTarget(
+                Permission.Operation.Grant,
+                DAO_ADDRESS,
+                pluginAddress,
+                NO_ORACLE,
+                EXECUTE_PERMISSION_ID
+            )
+        );
+        return permissions;
+    }
+
+    /*
     function _getInstallInstruction(PluginManagerLib.Data memory installation)
         internal
         view
@@ -84,6 +119,7 @@ contract CounterV1PluginManager is PluginManager {
         }
         return installation;
     }
+    */
 
     function getImplementationAddress() public view virtual override returns (address) {
         return address(counterBase);

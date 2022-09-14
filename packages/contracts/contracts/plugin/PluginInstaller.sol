@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
+import {BulkPermissionsLib as Permission} from "../core/permission/BulkPermissionsLib.sol";
 import {Permission, PluginManager, PluginManagerLib} from "./PluginManager.sol";
 import {PluginERC1967Proxy} from "../utils/PluginERC1967Proxy.sol";
 import {TransparentProxy} from "../utils/TransparentProxy.sol";
@@ -19,6 +20,12 @@ import {PluginTransparentUpgradeable} from "../core/plugin/PluginTransparentUpgr
 import {DaoAuthorizableUpgradeable} from "../core/component/DaoAuthorizableUpgradeable.sol";
 
 import {DAO} from "../core/DAO.sol";
+
+struct PermissionDeployment {
+    bool done;
+    IDAO dao;
+    Permission.ItemMultiTarget[] permissions;
+}
 
 /// @notice Plugin Installer that has root permissions to install plugin on the dao and apply permissions.
 contract PluginInstaller {
@@ -41,11 +48,13 @@ contract PluginInstaller {
         uint16[3] oldVersion;
     }
 
+    /*
     error InstallNotAllowed();
     error PluginCountTooBig();
     error UpdateNotAllowed();
     error AlreadyThisVersion();
     error UpgradeNotExistOnProxy();
+    */
 
     /// @notice Thrown after the plugin installation to detect plugin was installed on a dao.
     /// @param dao The dao address that plugin belongs to.
@@ -58,6 +67,45 @@ contract PluginInstaller {
     /// @param oldVersion the old version plugin is upgrading from.
     event PluginUpdated(address dao, address plugin, uint16[3] oldVersion, bytes data);
 
+    uint256 permissionDeploymentCount = 0;
+    mapping(uint256 => PermissionDeployment[]) public permissionDeployments;
+
+    // Called by the plugin (anyone) when the proposal is being created
+    function addDeployment(address daoAddress, InstallPlugin calldata plugin)
+        public
+        returns (uint256 deploymentId)
+    {
+        // TODO: try/catch or manager.supportsInterface()
+        (address pluginAddress, Permission[] memory requestedPermissions) = plugin.manager.deploy(
+            plugin.data
+        );
+
+        permissionDeployments[permissionDeploymentCount].permissions = requestedPermissions;
+        permissionDeployments[permissionDeploymentCount].dao = IDAO(daoAddress);
+        // permissionDeployments[permissionDeploymentCount].done = false;
+        permissionDeploymentCount++;
+
+        // emit PermissionDeploymentRegistered(pluginAddress);
+        return permissionDeploymentCount - 1;
+    }
+
+    // Called via Plugin => DAO.execute(...)
+    function commitDeployment(uint256 permissionDeploymentId) {
+        if (permissionDeploymentId >= permissionDeploymentCount) revert("");
+        else if (permissionDeployments[permissionDeploymentId].done) revert("");
+        else if (address(permissionDeployments[permissionDeploymentId].dao) != msg.sender)
+            revert("");
+
+        // Apply permissions
+        DAO(payable(dao)).bulkOnMultiTarget(
+            permissionDeployments[permissionDeploymentId].permissions
+        );
+
+        // done
+        permissionDeployments[permissionDeploymentId].done = true;
+    }
+
+    /*
     /// @notice Installs plugin on the dao by emitting the event and sets up permissions.
     /// @dev It's dev's responsibility to deploy the plugin inside the plugin manager.
     /// @param dao the dao address where the plugin should be installed.
@@ -153,8 +201,8 @@ contract PluginInstaller {
         upgradeProxy(plugin.proxy, implementationAddr, initData);
 
         // TODO: Since we allow users to decide not to use our pluginuupsupgradable/PluginTransparentUpgradeable since
-        // they don't want to use our ACL and features we will bring inside them, 
-        // we deploy such contracts with OZ's contracts directly. 
+        // they don't want to use our ACL and features we will bring inside them,
+        // we deploy such contracts with OZ's contracts directly.
         // In that case, we need to support upgrading them as well.
         DAO(payable(dao)).bulkOnMultiTarget(updateInstructions.permissions);
 
@@ -187,7 +235,7 @@ contract PluginInstaller {
             {} catch Error(string memory reason) {
                 revert(reason);
             } catch (
-                bytes memory /*lowLevelData*/
+                bytes memory // lowLevelData
             ) {
                 revert UpgradeNotExistOnProxy();
             }
@@ -197,10 +245,11 @@ contract PluginInstaller {
             ) {
                 revert(reason);
             } catch (
-                bytes memory /*lowLevelData*/
+                bytes memory // lowLevelData
             ) {
                 revert UpgradeNotExistOnProxy();
             }
         }
     }
+    */
 }

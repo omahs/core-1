@@ -15,6 +15,7 @@ import {PluginClones} from "../core/plugin/PluginClones.sol";
 import {Plugin} from "../core/plugin/Plugin.sol";
 import {PluginTransparentUpgradeable} from "../core/plugin/PluginTransparentUpgradeable.sol";
 
+/*
 library PluginManagerLib {
     using ERC165Checker for address;
     
@@ -163,7 +164,7 @@ library PluginManagerLib {
     function calculateInitCode(
         Data memory self,
         address implementation,
-        bytes memory /* initData */
+        bytes memory // initData
     ) internal view returns (bytes memory initCode, bytes memory additionalInitData) {
         if (implementation.supportsInterface(type(PluginUUPSUpgradeable).interfaceId)) {
             bytes memory bytecodeWithArgs = abi.encodePacked(
@@ -224,12 +225,29 @@ library PluginManagerLib {
         self.permissions = newPermissions;
     }
 }
+*/
 
 /// NOTE: This is an untested code and should NOT be used in production.
 /// @notice Abstract Plugin Factory that dev's have to inherit from for their factories.
 abstract contract PluginManager {
     bytes4 public constant PLUGIN_MANAGER_INTERFACE_ID = type(PluginManager).interfaceId;
-    
+
+    function deploy(bytes memory data)
+        public
+        virtual
+        returns (Permission.ItemMultiTarget[] permissions);
+
+    // function onUpdate(
+    //     address proxy,
+    //     uint16[3] calldata oldVersion,
+    //     bytes memory data
+    // ) public returns (bytes memory newInitData) {
+    //     // TODO: UNRESOLVED
+    //     // Define how to reconfigure the target plugin
+    //     // The Plugin Manager address will be different on each version
+    // }
+
+    /*
     function getInstallInstruction(
         address dao,
         bytes32 salt,
@@ -272,6 +290,7 @@ abstract contract PluginManager {
     /// @notice the plugin's base implementation address proxies need to delegate calls.
     /// @return address of the base contract address.
     function getImplementationAddress() public view virtual returns (address);
+    */
 
     /// @notice the ABI in string format that deploy function needs to use.
     /// @return ABI in string format.
