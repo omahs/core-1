@@ -56,17 +56,20 @@ abstract contract PluginManager {
 
     function getInstallPermissionOps(uint256 _nonce)
         external
+        view
         virtual
         returns (BulkPermissionsLib.ItemMultiTarget[] memory);
 
     function getUpdatePermissionOps(uint256 _nonce)
         external
+        view
         virtual
         returns (BulkPermissionsLib.ItemMultiTarget[] memory)
     {}
 
     function getUninstallPermissionOps(uint256 _nonce)
         external
+        view
         virtual
         returns (BulkPermissionsLib.ItemMultiTarget[] memory);
 

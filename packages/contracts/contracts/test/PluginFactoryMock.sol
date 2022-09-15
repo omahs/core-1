@@ -21,6 +21,7 @@ contract PluginManagerMock is PluginManager {
 
     function getInstallPermissionOps(uint256 _nonce)
         external
+        view
         virtual
         override
         returns (BulkPermissionsLib.ItemMultiTarget[] memory)
@@ -28,6 +29,7 @@ contract PluginManagerMock is PluginManager {
 
     function getUninstallPermissionOps(uint256 _nonce)
         external
+        view
         virtual
         override
         returns (BulkPermissionsLib.ItemMultiTarget[] memory)
