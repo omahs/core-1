@@ -29,15 +29,16 @@ contract PluginInstaller {
     using Create2 for address payable;
     using Address for address;
     using PluginManagementLib for PluginManagementLib.InstallContext;
-    using PluginManagementLib for PluginManagementLib.ContractDeployment;
+    using PluginManagementLib for PluginManagementLib.ContractDeploymentParams;
     using Permission for Permission.ItemMultiTarget;
 
     bytes32 public constant INSTALL_PERMISSION_ID = keccak256("INSTALL_PERMISSION");
     bytes32 public constant UPDATE_PERMISSION_ID = keccak256("UPDATE_PERMISSION");
 
     struct PluginDeployment {
-        bool done;
-        ContractDeployment pluginParams;
+        bool existing;
+        bool completed;
+        ContractDeploymentParams pluginParams;
         ItemMultiTarget[] permissions;
     }
 
@@ -53,10 +54,10 @@ contract PluginInstaller {
         uint16[3] oldVersion;
     }
 
+    error UpdateNotAllowed();
     /*
     error InstallNotAllowed();
     error PluginCountTooBig();
-    error UpdateNotAllowed();
     error AlreadyThisVersion();
     error UpgradeNotExistOnProxy();
     */
@@ -72,67 +73,90 @@ contract PluginInstaller {
     /// @param oldVersion the old version plugin is upgrading from.
     event PluginUpdated(address dao, address plugin, uint16[3] oldVersion, bytes data);
 
-    mapping(address => uint256) public permissionDeploymentCounts;
+    mapping(address => uint256) private pluginDeploymentCounts;
 
-    // pluginDeployments[daoAddr][idx]
-    mapping(address => mapping(uint256 => PluginDeployment[])) public pluginDeployments;
+    // pluginDeployments[daoAddr][id]
+    mapping(address => mapping(bytes32 => PluginDeployment[])) public pluginDeployments;
 
-    // Called via Plugin => DAO.execute(...) when a proposal is being created
-    function createDeployment(PluginInstallParams calldata plugin)
+    // Called by anyone (when a proposal is being created)
+    function createDeployment(address daoAddress, PluginInstallParams calldata plugin)
         public
-        returns (uint256 deploymentId)
+        returns (bytes32 deploymentId)
     {
+        uint256 deploymentIdx = pluginDeploymentCounts[daoAddress];
+        // Salted id to prevent cross execution from other DAO's
+        bytes32 deploymentId = keccak256(abi.encodePacked(daoAddress, deploymentIdx));
         InstallContext memory context = PluginManagementLib.init(
             address(this), // installer
-            bytes32(deploymentId), // salt
+            deploymentId, // salt
             plugin.data
         );
 
-        // Deploy the helpers (if any) and simulate the plugin deploy
+        // Deploy the helpers (if any) and simulate the plugin deployment
         // TODO: try/catch or manager.supportsInterface()
         context = plugin.manager.deploy(context);
 
-        uint256 idx = permissionDeploymentCounts[msg.sender];
-        pluginDeployments[msg.sender][idx].plugin = context.plugin;
-        pluginDeployments[msg.sender][idx].permissions = context.permissions;
-        // pluginDeployments[msg.sender][idx].done = false;
-        permissionDeploymentCounts[msg.sender]++;
+        // TODO: OPTIMIZE STORAGE
+        pluginDeployments[daoAddress][deploymentId].plugin = context.plugin;
+        pluginDeployments[daoAddress][deploymentId].permissions = context.permissions;
+        pluginDeployments[daoAddress][deploymentId].existing = true;
+        // pluginDeployments[daoAddress][deploymentId].completed = false;
+
+        pluginDeploymentCounts[daoAddress]++;
 
         // emit PermissionDeploymentRegistered(pluginAddress);
-        return idx;
+        return deploymentId;
     }
 
-    // Called via Plugin => DAO.execute(...)
-    function commitDeployment(uint256 permissionDeploymentId) {
-        if (permissionDeploymentId >= permissionDeploymentCounts[msg.sender]) revert("");
-        else if (pluginDeployments[msg.sender][permissionDeploymentId].done) revert("");
+    // Called via Plugin => DAO.execute(...) => PI.commitDeployment(didx)
+    function commitDeployment(bytes32 deploymentId) {
+        if (!pluginDeployments[msg.sender][deploymentId].existing) revert("Not found");
+        else if (pluginDeployments[msg.sender][deploymentId].completed) revert("Done");
 
         // Deploy the plugin
         // TODO: Get the instructions
-        // TODO: Deploy with Create2
+        // TODO: Deploy without create2
 
         // Apply permissions
         DAO(payable(dao)).bulkOnMultiTarget(
-            pluginDeployments[msg.sender][permissionDeploymentId].permissions
+            pluginDeployments[msg.sender][deploymentId].permissions
         );
 
         // TODO: grant ourselves permission to call onUpdate() on the plugin
+        // if (upgradeable) ...
         // DAO(payable(dao)).grant(plugin, this, UPDATE_HOOK_PERMISSION);
+        // TODO: Grant permission so that the DAO can call updateTo()
+        // DAO(address(plugin)).grant(plugin, address(dao), UPDATE_PERMISSION);
 
-        // done
-        pluginDeployments[msg.sender][permissionDeploymentId].done = true;
+        // completed
+        pluginDeployments[msg.sender][deploymentId].completed = true;
 
         // emit event
     }
 
     // Called via plugin.execute() => DAO.execute()
     function updatePlugin(PluginUpdateParams updateDetails) {
-        // TODO: Detect interface + check that the proxy is upgradeable
+        // TODO: Detect interface
+        // TODO: 
+        // if (!upgradeable) revert();
 
+        if (
+            !DAO(payable(msg.sender)).hasPermission(
+                updateDetails.proxy,
+                msg.sender,
+                INSTALL_PERMISSION_ID,
+                bytes("")
+            )
+        ) {
+            revert UpdateNotAllowed();
+        }
+
+        // Proxy pointing to the new implementations
         updateDetails.proxy.updateTo(updateDetails.manager.IMPLEMENTATION_ADDRESS);
 
         // TODO:  (ideally, get the plugin ID + version, not just the manager version)
 
+        // Notify hook
         updateDetails.proxy.onUpdate(updateDetails.oldVersion, updateDetails.data);
     }
 

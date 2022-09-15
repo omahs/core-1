@@ -13,13 +13,14 @@ contract CounterV1 is PluginUUPSUpgradeable {
 
     struct PluginInstallRequest {
         bytes32 pluginId;
+        uint8[3] memory version;
         bytes memory data;
     }
     struct Proposal {
         uint256 proposalId;
         bool executed;
         bool isPlugin;
-        uint256 deploymentId;
+        bytes32 deploymentId;
         IDAO.Action[] actions;
     }
 
@@ -53,23 +54,15 @@ contract CounterV1 is PluginUUPSUpgradeable {
         address pluginInstaller,
         PluginInstallRequest pluginInfo
     ) {
-        // Ideally, resolve pluginInfo.pluginId => version => new PluginManager addr
-
         // Encode plugin deployment request
-        bytes32 memory updateData = abi.encode(0x1234, (bytes2));
-        PluginInstallParams installParams = PluginInstallParams(newPluginManager, updateData);
+        bytes32 memory initData = abi.encode(0x1234, (bytes2));
 
-        IDAO.Action[] actionList = [
-            // ENCODE ( __ pluginInstaller.createDeployment(daoAddress, installParams) __ )
-        ];
-        // TODO: callID/proposalID needs to be unique => salted+hashed
-        bytes memory results = this.dao().execute(proposalId, actionList);
-
-        // TODO: parse deploymentId from results
-        (uint256 deploymentId) = abi.decode(results, (uint256));
+        PluginInstallParams installParams = PluginManagementLib.wrapPluginInstallParams(pluginInfo.pluginId, pluginInfo.version, initData);
+        bytes32 deploymentId = pluginInstaller.createDeployment(daoAddress, installParams);
 
         // Store proposal ID => deploymentID
-        proposals[proposalCount].push(Proposal(proposalCount, false, true, deploymentId, []));
+        Proposal newProposal = Proposal(proposalCount, false, true, deploymentId, []);
+        proposals[proposalCount].push(newProposal);
         proposalCount++;
 
         // Emit event?

@@ -14,6 +14,7 @@ import {PluginUUPSUpgradeable} from "../core/plugin/PluginUUPSUpgradeable.sol";
 import {PluginClones} from "../core/plugin/PluginClones.sol";
 import {Plugin} from "../core/plugin/Plugin.sol";
 import {PluginTransparentUpgradeable} from "../core/plugin/PluginTransparentUpgradeable.sol";
+import {PluginInstaller} from "../core/plugin/PluginInstaller.sol";
 
 library PluginManagementLib {
     using ERC165Checker for address;
@@ -21,7 +22,7 @@ library PluginManagementLib {
     // Placeholder to use when referencing the DAO
     address private constant DAO_ADDRESS = address(-1);
 
-    struct ContractDeployment {
+    struct ContractDeploymentParams {
         // gets returned by the dev and describes what function should be called after deployment.
         bytes initData;
         // Aragon's custom init data which describes what function should be called after initData is called.
@@ -35,8 +36,8 @@ library PluginManagementLib {
         address installer;
         bytes32 salt;
         bytes params;
-        ContractDeployment plugin;
-        // ContractDeployment[] helpers;
+        ContractDeploymentParams plugin;
+        // ContractDeploymentParams[] helpers;
         Permission.ItemMultiTarget[] permissions;
     }
 
@@ -59,7 +60,7 @@ library PluginManagementLib {
         bytes memory initCode,
         bytes memory initData
     ) internal pure returns (address deploymentAddress) {
-        ContractDeployment memory newDeployment = ContractDeployment(initData, bytes(""), initCode);
+        ContractDeploymentParams memory newDeployment = ContractDeploymentParams(initData, bytes(""), initCode);
         (self.plugins, deploymentAddress) = _addDeploy(
             self.salt,
             self.installer,
@@ -95,7 +96,7 @@ library PluginManagementLib {
             initData
         );
 
-        self.plugin = ContractDeployment(initData, internalInitData, initCode);
+        self.plugin = ContractDeploymentParams(initData, internalInitData, initCode);
 
         deploymentAddress = Create2.computeAddress(
             self.salt,
@@ -111,7 +112,7 @@ library PluginManagementLib {
         bytes memory initCode,
         bytes memory initData
     ) internal pure returns (address deploymentAddress) {
-        ContractDeployment memory newDeployment = ContractDeployment(initData, bytes(""), initCode);
+        ContractDeploymentParams memory newDeployment = ContractDeploymentParams(initData, bytes(""), initCode);
         (self.helpers, deploymentAddress) = _addDeploy(
             self.salt,
             self.installer,
@@ -135,7 +136,7 @@ library PluginManagementLib {
             initData
         );
 
-        ContractDeployment memory newDeployment = ContractDeployment(initData, internalInitData, initCode);
+        ContractDeploymentParams memory newDeployment = ContractDeploymentParams(initData, internalInitData, initCode);
         (self.helpers, deploymentAddress) = _addDeploy(
             self.salt,
             self.installer,
@@ -147,10 +148,10 @@ library PluginManagementLib {
     function _addDeploy(
         bytes32 salt,
         address installer,
-        ContractDeployment[] memory currentDeployments,
-        ContractDeployment memory newDeployment
-    ) internal pure returns (ContractDeployment[] memory newDeployments, address deploymentAddress) {
-        newDeployments = new ContractDeployment[](currentDeployments.length + 1);
+        ContractDeploymentParams[] memory currentDeployments,
+        ContractDeploymentParams memory newDeployment
+    ) internal pure returns (ContractDeploymentParams[] memory newDeployments, address deploymentAddress) {
+        newDeployments = new ContractDeploymentParams[](currentDeployments.length + 1);
 
         // TODO: more efficient copy
         for (uint256 i = 0; i < currentDeployments.length; i++) {
@@ -231,6 +232,18 @@ library PluginManagementLib {
         else newPermissions[0] = newPermission;
 
         self.permissions = newPermissions;
+    }
+
+    function wrapPluginInstallParams(
+        bytes32 pluginId,
+        uint256[3] memory version,
+        bytes32 memory initData,
+        address pluginRegistry
+    ) returns (PluginInstallParams installParams) {
+        // TODO: properly resolve pluginInfo.pluginId => version => new PluginManager addr
+        address pluginManager = pluginRegistry.resolve(pluginId, version);
+
+        installParams = PluginInstallParams(pluginManager, initData);
     }
 }
 
