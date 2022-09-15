@@ -23,7 +23,7 @@ contract CounterV1PluginManager is PluginManager {
     }
 
     function getMultiplyHelperAddress(uint256 _nonce) internal view returns (address) {
-        return associatedContracts[nonce][2];
+        return associatedContracts[_nonce][2];
     }
 
     function install(address dao, bytes memory data) external virtual override {
@@ -50,6 +50,7 @@ contract CounterV1PluginManager is PluginManager {
 
     function getInstallPermissionOps(uint256 _nonce)
         external
+        view
         override
         assertAssociatedContractCount(_nonce)
         returns (BulkPermissionsLib.ItemMultiTarget[] memory permissionOperations)

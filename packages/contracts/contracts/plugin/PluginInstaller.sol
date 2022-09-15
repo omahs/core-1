@@ -9,13 +9,18 @@ import "./PluginManager.sol";
 import "../core/DAO.sol";
 import {AragonUpgradablePlugin} from "../core/plugin/AragonUpgradablePlugin.sol";
 
-// Has ROOT_PERMISSION
 contract PluginInstaller is ReentrancyGuard {
     event PluginInstalled();
     event PluginUpdated();
     event PluginUninstalled();
 
-    function installPlugin(PluginManager _pluginManager, uint256 _nonce) external {
+    error WrongInstallingDao(address expected, address actual);
+    error PluginNotUpgradable();
+
+    function install(PluginManager _pluginManager, uint256 _nonce)
+        external
+        installingDaoCheck(_pluginManager, _nonce)
+    {
         _process(
             DAO(payable(_pluginManager.getDaoAddress(_nonce))),
             _pluginManager.getInstallPermissionOps(_nonce)
@@ -44,19 +49,6 @@ contract PluginInstaller is ReentrancyGuard {
         emit PluginUpdated();
     }
 
-    error WrongInstallingDao(address expected, address actual);
-    error PluginNotUpgradable();
-
-    modifier installingDaoCheck(PluginManager _pluginManager, uint256 _nonce) {
-        address installingDao = msg.sender;
-        address associatedDao = _pluginManager.getDaoAddress(_nonce);
-
-        if (installingDao != associatedDao) {
-            revert WrongInstallingDao({expected: associatedDao, actual: installingDao});
-        }
-        _;
-    }
-
     function updateWithUpgrade(
         PluginManager _oldPluginManager,
         uint256 _oldNonce,
@@ -83,7 +75,7 @@ contract PluginInstaller is ReentrancyGuard {
         _update(_newPluginManager, _newNonce);
     }
 
-    function uninstallPlugin(
+    function uninstall(
         DAO _dao,
         PluginManager _pluginManager,
         uint256 _nonce
@@ -100,5 +92,15 @@ contract PluginInstaller is ReentrancyGuard {
         nonReentrant
     {
         _dao.bulkOnMultiTarget(_permissions);
+    }
+
+    modifier installingDaoCheck(PluginManager _pluginManager, uint256 _nonce) {
+        address installingDao = msg.sender;
+        address associatedDao = _pluginManager.getDaoAddress(_nonce);
+
+        if (installingDao != associatedDao) {
+            revert WrongInstallingDao({expected: associatedDao, actual: installingDao});
+        }
+        _;
     }
 }

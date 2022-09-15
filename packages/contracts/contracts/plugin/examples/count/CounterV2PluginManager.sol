@@ -25,7 +25,7 @@ contract CounterV2PluginManager is PluginManager {
     }
 
     function getMultiplyCallerAddress(uint256 _nonce) internal view returns (address) {
-        return associatedContracts[nonce][2];
+        return associatedContracts[_nonce][2];
     }
 
     function install(address dao, bytes memory data) external virtual override {
@@ -56,8 +56,6 @@ contract CounterV2PluginManager is PluginManager {
         uint256 _oldNonce,
         bytes memory data
     ) external virtual override {
-        uint256 _newVariable = abi.decode(data, (uint256));
-
         address whoCanCallMultiply = abi.decode(data, (address));
 
         associatedContracts[nonce] = new address[](associatedContractsCount);
@@ -126,6 +124,7 @@ contract CounterV2PluginManager is PluginManager {
 
     function getUninstallPermissionOps(uint256 _nonce)
         external
+        view
         override
         returns (BulkPermissionsLib.ItemMultiTarget[] memory permissionOperations)
     {
