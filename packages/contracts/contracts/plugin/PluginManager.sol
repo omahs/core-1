@@ -2,38 +2,77 @@
 
 pragma solidity 0.8.10;
 
-import "./PluginInstaller.sol";
 import "../utils/PluginERC1967Proxy.sol";
 import "../core/permission/BulkPermissionsLib.sol";
+import {DAO} from "../core/DAO.sol";
 
 /// NOTE: This is an untested code and should NOT be used in production.
 /// @notice Abstract Plugin Factory that dev's have to inherit from for their factories.
 abstract contract PluginManager {
     bytes4 public constant PLUGIN_MANAGER_INTERFACE_ID = type(PluginManager).interfaceId;
 
-    PluginInstaller internal constant aragonPluginInstaller = PluginInstaller(address(0x123)); // replace with real address
+    uint256 public nonce;
+    uint256 public associatedContractsCount;
+
+    mapping(uint256 => address[]) associatedContracts; // the array length can vary across plugin version
+
+    error InvalidLength(uint256 expected, uint256 actual);
+
+    modifier assertAssociatedContractCount(uint256 _nonce) {
+        if (associatedContractsCount != associatedContracts[_nonce].length) {
+            revert InvalidLength(associatedContractsCount, associatedContracts[_nonce].length);
+        }
+        _;
+    }
+
+    function getDaoAddress(uint256 _nonce) public view returns (address) {
+        return associatedContracts[_nonce][0];
+    }
+
+    function getPluginAddress(uint256 _nonce) public view returns (address) {
+        return associatedContracts[_nonce][1];
+    }
+
+    struct SetupInstruction {
+        BulkPermissionsLib.ItemMultiTarget[] permissionOperations;
+        address proxy;
+        address newLogic;
+    }
+
+    mapping(DAO => mapping(uint256 => SetupInstruction)) setupInstructions;
 
     function getImplementationAddress() public view virtual returns (address);
 
-    function install(address dao, bytes memory data)
-        external
-        virtual
-        returns (BulkPermissionsLib.ItemMultiTarget[] memory permissions);
-
-    function postInstallHook() external virtual {}
+    // deploys contracts and stores contracts
+    function install(address _dao, bytes memory _data) external virtual;
 
     function update(
-        address proxy,
-        uint16[3] calldata oldVersion,
+        PluginManager _oldPluginManager,
+        uint256 _oldNonce,
         bytes memory data
-    ) external virtual returns (BulkPermissionsLib.ItemMultiTarget[] memory permissions);
+    ) external virtual {}
 
-    function postUpdateHook() external virtual {}
+    function uninstall(bytes memory data) external virtual {}
 
-    function uninstall(address proxy, bytes memory data)
+    function getInstallPermissionOps(uint256 _nonce)
         external
         virtual
-        returns (BulkPermissionsLib.ItemMultiTarget[] memory permissions);
+        returns (BulkPermissionsLib.ItemMultiTarget[] memory);
+
+    function getUpdatePermissionOps(uint256 _nonce)
+        external
+        virtual
+        returns (BulkPermissionsLib.ItemMultiTarget[] memory)
+    {}
+
+    function getUninstallPermissionOps(uint256 _nonce)
+        external
+        virtual
+        returns (BulkPermissionsLib.ItemMultiTarget[] memory);
+
+    function postInstallHook(uint256 _nonce) external virtual {}
+
+    function postUpdateHook(uint256 _nonce) external virtual {}
 
     function postUninstallHook() external virtual {}
 

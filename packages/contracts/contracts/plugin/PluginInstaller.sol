@@ -6,99 +6,99 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "../core/permission/BulkPermissionsLib.sol";
 import "./PluginManager.sol";
+import "../core/DAO.sol";
+import {AragonUpgradablePlugin} from "../core/plugin/AragonUpgradablePlugin.sol";
 
 // Has ROOT_PERMISSION
-
 contract PluginInstaller is ReentrancyGuard {
     event PluginInstalled();
     event PluginUpdated();
     event PluginUninstalled();
 
-    uint256 private nonce;
+    function installPlugin(PluginManager _pluginManager, uint256 _nonce) external {
+        _process(
+            DAO(payable(_pluginManager.getDaoAddress(_nonce))),
+            _pluginManager.getInstallPermissionOps(_nonce)
+        );
 
-    struct SetupStep {
-        BulkPermissionsLib.ItemMultiTarget[] permissionOperations;
-        address oldUpgradeablePlugin;
-        address newUpgradeablePlugin;
-    }
-
-    // DAO address => nonce => permission operations
-    mapping(IDAO => mapping(uint256 => BulkPermissionsLib.ItemMultiTarget[])) setupInstructions;
-
-    function storePermissionOperations(
-        IDAO dao,
-        BulkPermissionsLib.ItemMultiTarget[] memory _permissionOperations
-    ) external returns (uint256) {
-        nonce++;
-        permissionOperations[dao][nonce] = _permissionOperations;
-
-        return nonce;
-    }
-
-    function installPlugin(
-        IDAO _dao,
-        PluginManager _pluginManager,
-        uint256 _nonce
-    ) external {
-        _process(_dao, setupInstructions[_dao][_nonce].permissionOperations);
-
-        pluginManager.postInstallHook();
+        //_pluginManager.postInstallHook(); // TODO
 
         emit PluginInstalled();
     }
 
-    function update(
-        IDAO _dao,
-        PluginManager _pluginManager,
-        uint256 _nonce
-    ) external {
-        _update(_dao, _pluginManager, _nonce);
+    function updateWithoutUpgrade(PluginManager _pluginManager, uint256 _nonce)
+        external
+        installingDaoCheck(_pluginManager, _nonce)
+    {
+        _update(_pluginManager, _nonce);
     }
 
-    function _update(
-        IDAO dao,
-        PluginManager pluginManager,
-        uint256 _nonce
-    ) internal {
-        _process(_dao, setupInstructions[_dao][_nonce].permissionOperations); // UPGRADE_PERMISSION stays on the proxy that does not change it's address
+    function _update(PluginManager _pluginManager, uint256 _nonce) internal {
+        _process(
+            DAO(payable(_pluginManager.getDaoAddress(_nonce))),
+            _pluginManager.getInstallPermissionOps(_nonce)
+        );
 
-        pluginManager.postUpdateHook();
+        //_pluginManager.postUpdateHook(); // TODO
 
         emit PluginUpdated();
     }
 
-    function updateWithUpgrade(
-        IDAO dao,
-        PluginManager pluginManager,
-        uint256 _nonce
-    ) external {
-        // Upgrade
-        AragonUpgradablePlugin oldPlugin = AragonUpgradablePlugin(
-            setupInstructions[_dao][_nonce].oldPlugin
-        );
-        oldPlugin.upgradeToAndCall(setupInstructions[_dao][_nonce].newPlugin, "0x");
+    error WrongInstallingDao(address expected, address actual);
+    error PluginNotUpgradable();
 
-        // Update
-        _update(_dao, _pluginManager, _nonce);
+    modifier installingDaoCheck(PluginManager _pluginManager, uint256 _nonce) {
+        address installingDao = msg.sender;
+        address associatedDao = _pluginManager.getDaoAddress(_nonce);
+
+        if (installingDao != associatedDao) {
+            revert WrongInstallingDao({expected: associatedDao, actual: installingDao});
+        }
+        _;
+    }
+
+    function updateWithUpgrade(
+        PluginManager _oldPluginManager,
+        uint256 _oldNonce,
+        PluginManager _newPluginManager,
+        uint256 _newNonce
+    )
+        external
+        installingDaoCheck(_oldPluginManager, _oldNonce)
+        installingDaoCheck(_newPluginManager, _newNonce)
+    {
+        // Upgrade the contract
+        AragonUpgradablePlugin proxy = AragonUpgradablePlugin(
+            _oldPluginManager.getPluginAddress(_oldNonce)
+        );
+
+        // TODO
+        /* if (!proxy.supportsInterface("UUPSUpgradable")) {
+            revert PluginNotUpgradable();
+        } */
+
+        proxy.upgradeToAndCall(_newPluginManager.getPluginAddress(_newNonce), "0x");
+
+        // Update permissions
+        _update(_newPluginManager, _newNonce);
     }
 
     function uninstallPlugin(
-        IDAO dao,
-        PluginManager pluginManager,
+        DAO _dao,
+        PluginManager _pluginManager,
         uint256 _nonce
-    ) external {
-        _process(_dao, setupInstructions[_dao][_nonce].permissionOperations);
+    ) external installingDaoCheck(_pluginManager, _nonce) {
+        _process(_dao, _pluginManager.getInstallPermissionOps(_nonce));
 
-        pluginManager.postUninstallHook();
+        //_pluginManager.postUninstallHook(); // TODO
 
         emit PluginUninstalled();
     }
 
-    function _process(IDAO dao, BulkPermissionsLib.ItemMultiTarget[] memory permissions)
+    function _process(DAO _dao, BulkPermissionsLib.ItemMultiTarget[] memory _permissions)
         private
-        view
         nonReentrant
     {
-        dao.bulkOnMultiTarget(permissions);
+        _dao.bulkOnMultiTarget(_permissions);
     }
 }

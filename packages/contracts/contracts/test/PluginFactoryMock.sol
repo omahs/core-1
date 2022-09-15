@@ -7,37 +7,29 @@ import "./MajorityVotingMock.sol";
 import "../utils/Proxy.sol";
 
 contract PluginManagerMock is PluginManager {
-    event NewPluginDeployed(address dao, bytes params);
-
     address public basePluginAddress;
 
     constructor() {
         basePluginAddress = address(new MajorityVotingMock());
     }
 
-    function deploy(address dao, bytes calldata params)
-        external
-        override
-        returns (address plugin, address[] memory relatedContracts)
-    {
-        plugin = basePluginAddress;
-
-        emit NewPluginDeployed(dao, params);
-    }
-
     function getImplementationAddress() public view virtual override returns (address) {
         return basePluginAddress;
     }
 
-    function deployABI() external view virtual override returns (string memory) {
-        return "";
-    }
+    function install(address _dao, bytes memory _data) external virtual override {}
 
-    function getInstallPermissions(bytes memory data)
+    function getInstallPermissionOps(uint256 _nonce)
         external
-        view
         virtual
         override
-        returns (RequestedPermission[] memory, string[] memory)
+        returns (BulkPermissionsLib.ItemMultiTarget[] memory)
+    {}
+
+    function getUninstallPermissionOps(uint256 _nonce)
+        external
+        virtual
+        override
+        returns (BulkPermissionsLib.ItemMultiTarget[] memory)
     {}
 }
