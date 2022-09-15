@@ -16,11 +16,15 @@ contract CounterV1 is PluginUUPSUpgradeable {
         bytes memory data;
     }
     struct Proposal {
-        bytes32 proposalId;
+        uint256 proposalId;
         bool executed;
         bool isPlugin;
         uint256 deploymentId;
+        IDAO.Action[] actions;
     }
+
+    uint256 public proposalCount = 0;
+    mapping(uint256 => Proposal) public proposals;
 
     uint256 public count;
     MultiplyHelper public multiplyHelper;
@@ -35,7 +39,13 @@ contract CounterV1 is PluginUUPSUpgradeable {
         return count;
     }
 
-    function createProposal(string _metadataEtc, IDAO.Action[] memory actions) {}
+    function createProposal(string _metadataEtc, IDAO.Action[] memory actions) {
+        // Store proposal ID => deploymentID
+        proposals[proposalCount].push(Proposal(proposalCount, false, false, deploymentId, actions));
+        proposalCount++;
+
+        // emit event
+    }
 
     function createPluginProposal(
         string _metadataEtc,
@@ -44,39 +54,76 @@ contract CounterV1 is PluginUUPSUpgradeable {
         PluginInstallRequest pluginInfo
     ) {
         // Resolve pluginInfo.pluginId => version => PluginManager
-        
-        uint256 deploymentId = PluginInstaller(pluginInstaller).addDeployment(daoAddress, plugin);
+
+        uint256 deploymentId = PluginInstaller(pluginInstaller).createDeployment(
+            daoAddress,
+            plugin
+        );
 
         // Store proposal ID => deploymentID
+        proposals[proposalCount].push(Proposal(proposalCount, false, true, deploymentId, []));
+        proposalCount++;
+
+        // Emit event?
     }
 
-    function createUpgradeProposal(string _metadata, uint16[3] calldata newVersion) {
-        // We can know the PluginID
+    function createUpdateProposal(
+        string _metadata,
+        uint16[3] calldata newVersion,
+        bytes memory updateInitData,
+        address pluginInstaller
+    ) {
+        // TODO: We need to know our own Plugin ID (within the plugin registry)
 
-        // TODO: UNRESOLVED
-        // TODO: We don't use the PluginManager, so the dev has to do everything manually
-        // TODO: We don't know how our new version will look like
+        // TODO: Resolve our newer plugin manager address from the registry
+        address newPluginManagerAddr = PluginRegistry.resolve(pluginId, newVersion);
+
+        PluginUpdateParams updateDetails = PluginUpdateParams(
+            newPluginManagerAddr,
+            updateInitData, // post update params
+            address(this), // the proxy
+            [1, 2, 1] // our own version (old)
+        );
+
+        // Execute
+        IDAO.Action[] installActionList = [
+            // abi.encodeWithSelector( ___ pluginInstaller.updatePlugin(updateDetails) ___ );
+        ];
+        // TODO: callID/proposalID needs to be unique => salted+hashed
+        this.dao().execute(proposalId, installActionList);
     }
 
-    function execute(bytes32 proposalId) public {
+    function execute(uint256 proposalId) public {
         // if not passed: revert()
 
-        // IF PROPOSAL IS STANDARD:
-        // IDAO dao = dao();
-        // dao.execute(...)
+        if (proposalId >= proposals.length) revert("");
+        else if (proposals[proposalId].executed) revert("");
+        else if (!proposals[proposalId].isPlugin) {
+            // TODO: callID/proposalID needs to be unique => salted+hashed
+            this.dao().execute(proposalId, proposals[proposalId].actions);
+        } else {
+            // Plugin update proposal
 
-        // IF PSOPOSAL IS PLUGIN:
-        // pluginInstaller.commitDeployment(cid);
+            IDAO.Action[] installActionList = [
+                // abi.encodeWithSelector( ___ pluginInstaller.commitDeployment(cid) ___ );
+            ];
+            // TODO: callID/proposalID needs to be unique => salted+hashed
+            this.dao().execute(proposalId, installActionList);
+        }
+
+        proposals[proposalId].executed = true;
     }
 
     // Lifecycle
 
     // Called by proposal.execute() => DAO.execute() => this.onUpdate()
-    function onUpdate(
-        address proxy,
-        uint16[3] calldata oldVersion,
-        bytes memory data
-    ) public returns (bytes memory newInitData) {
+    function onUpdate(uint16[3] calldata oldVersion, bytes memory data)
+        public
+        returns (bytes memory newInitData)
+    {
         // Detect what needs handling from old > new version
+        if(oldVersion[0] == 1 && oldVersion[1] <= 1) {
+            // do something
+        }
     }
 }

@@ -2,12 +2,12 @@
 
 pragma solidity 0.8.10;
 
-import {Permission, PluginManager, PluginManagerLib} from "../plugin/PluginManager.sol";
+import {Permission, PluginManager, PluginManagementLib} from "../plugin/PluginManager.sol";
 import {PluginUUPSUpgradableV1Mock, PluginUUPSUpgradableV2Mock} from "../test/PluginUUPSUpgradableMock.sol";
 
 // The first version of plugin manager.
 contract PluginManagerMock is PluginManager {
-    using PluginManagerLib for PluginManagerLib.Data;
+    using PluginManagementLib for PluginManagementLib.InstallContext;
 
     PluginUUPSUpgradableV1Mock public helperBase;
     PluginUUPSUpgradableV1Mock public pluginBase;
@@ -21,11 +21,11 @@ contract PluginManagerMock is PluginManager {
         pluginBase = new PluginUUPSUpgradableV1Mock();
     }
 
-    function _getInstallInstruction(PluginManagerLib.Data memory installation)
+    function _getInstallInstruction(PluginManagementLib.InstallContext memory installation)
         internal
         view
         override
-        returns (PluginManagerLib.Data memory)
+        returns (PluginManagementLib.InstallContext memory)
     {
         address helperAddr = installation.addHelper(address(helperBase), bytes(""));
 
@@ -34,7 +34,7 @@ contract PluginManagerMock is PluginManager {
             abi.encodeWithSelector(bytes4(keccak256("initialize(uint256)")), PLUGIN_INIT_NUMBER)
         );
 
-        installation.addPermission(
+        installation.requestPermission(
             Permission.Operation.Grant,
             installation.dao,
             pluginAddr,
@@ -42,7 +42,7 @@ contract PluginManagerMock is PluginManager {
             keccak256("EXEC_PERMISSION")
         );
 
-        installation.addPermission(
+        installation.requestPermission(
             Permission.Operation.Grant,
             pluginAddr,
             helperAddr,
@@ -64,7 +64,7 @@ contract PluginManagerMock is PluginManager {
 
 // The second version of plugin manager.
 contract PluginManagerV2Mock is PluginManager {
-    using PluginManagerLib for PluginManagerLib.Data;
+    using PluginManagementLib for PluginManagementLib.InstallContext;
 
     PluginUUPSUpgradableV1Mock public helperBase;
     PluginUUPSUpgradableV2Mock public pluginBase;
@@ -77,17 +77,17 @@ contract PluginManagerV2Mock is PluginManager {
         pluginBase = new PluginUUPSUpgradableV2Mock();
     }
 
-    function _getInstallInstruction(PluginManagerLib.Data memory installation)
+    function _getInstallInstruction(PluginManagementLib.InstallContext memory installation)
         internal
         view
         override
-        returns (PluginManagerLib.Data memory)
+        returns (PluginManagementLib.InstallContext memory)
     {
         address helperAddr = installation.addHelper(address(helperBase), bytes(""));
 
         address pluginAddr = installation.addPlugin(address(pluginBase), bytes(""));
 
-        installation.addPermission(
+        installation.requestPermission(
             Permission.Operation.Grant,
             installation.dao,
             pluginAddr,
@@ -95,7 +95,7 @@ contract PluginManagerV2Mock is PluginManager {
             keccak256("EXEC_PERMISSION")
         );
 
-        installation.addPermission(
+        installation.requestPermission(
             Permission.Operation.Grant,
             pluginAddr,
             helperAddr,
@@ -117,8 +117,8 @@ contract PluginManagerV2Mock is PluginManager {
     function _getUpdateInstruction(
         address proxy,
         uint16[3] calldata oldVersion,
-        PluginManagerLib.Data memory update
-    ) internal view override returns (PluginManagerLib.Data memory, bytes memory initData) {
+        PluginManagementLib.InstallContext memory update
+    ) internal view override returns (PluginManagementLib.InstallContext memory, bytes memory initData) {
         initData = abi.encodeWithSelector(
             bytes4(keccak256("initializeV2(string)")),
             "stringExample"
@@ -126,7 +126,7 @@ contract PluginManagerV2Mock is PluginManager {
 
         address helperAddr = update.addHelper(address(helperBase), bytes(""));
 
-        update.addPermission(
+        update.requestPermission(
             Permission.Operation.Revoke,
             update.dao,
             proxy,
@@ -134,7 +134,7 @@ contract PluginManagerV2Mock is PluginManager {
             keccak256("EXEC_PERMISSION")
         );
 
-        update.addPermission(
+        update.requestPermission(
             Permission.Operation.Grant,
             helperAddr,
             proxy,

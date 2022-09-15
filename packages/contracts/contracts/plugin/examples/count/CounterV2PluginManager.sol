@@ -6,13 +6,13 @@ import '@openzeppelin/contracts/proxy/Clones.sol';
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {Permission, PluginManager, PluginManagerLib} from "../../PluginManager.sol";
+import {Permission, PluginManager, PluginManagementLib} from "../../PluginManager.sol";
 import {MultiplyHelper} from  "./MultiplyHelper.sol";
 import "./CounterV2.sol";
 
 contract CounterV2PluginManager is PluginManager {
     using Clones for address;
-    using PluginManagerLib for PluginManagerLib.Data;
+    using PluginManagementLib for PluginManagementLib.InstallContext;
     
     // For testing purposes, the below are public...
     MultiplyHelper public multiplyHelperBase;
@@ -26,11 +26,11 @@ contract CounterV2PluginManager is PluginManager {
         counterBase = new CounterV2();
     }
 
-    function _getInstallInstruction(PluginManagerLib.Data memory installation)
+    function _getInstallInstruction(PluginManagementLib.InstallContext memory installation)
         internal
         view
         override
-        returns (PluginManagerLib.Data memory)
+        returns (PluginManagementLib.InstallContext memory)
     {
         // Decode the parameters from the UI
         (address _multiplyHelper, uint256 _num) = abi.decode(
@@ -52,7 +52,7 @@ contract CounterV2PluginManager is PluginManager {
 
         address pluginAddr = installation.addPlugin(address(counterBase), initData);
 
-        installation.addPermission(
+        installation.requestPermission(
             Permission.Operation.Grant,
             installation.dao,
             pluginAddr,
@@ -60,7 +60,7 @@ contract CounterV2PluginManager is PluginManager {
             keccak256("EXEC_PERMISSION")
         );
 
-        installation.addPermission(
+        installation.requestPermission(
             Permission.Operation.Grant,
             pluginAddr,
             installation.dao,
@@ -69,7 +69,7 @@ contract CounterV2PluginManager is PluginManager {
         );
 
         if (_multiplyHelper == address(0)) {
-            installation.addPermission(
+            installation.requestPermission(
                 Permission.Operation.Grant,
                 multiplyHelper,
                 pluginAddr,
@@ -84,8 +84,8 @@ contract CounterV2PluginManager is PluginManager {
     function _getUpdateInstruction(
         address proxy,
         uint16[3] calldata oldVersion,
-        PluginManagerLib.Data memory update
-    ) internal view override returns (PluginManagerLib.Data memory, bytes memory initData) {
+        PluginManagementLib.InstallContext memory update
+    ) internal view override returns (PluginManagementLib.InstallContext memory, bytes memory initData) {
         uint256 _newVariable;
 
         if (oldVersion[0] == 1 && oldVersion[1] == 0) {
@@ -96,7 +96,7 @@ contract CounterV2PluginManager is PluginManager {
             );
         }
 
-        update.addPermission(
+        update.requestPermission(
             Permission.Operation.Revoke,
             update.dao,
             proxy,

@@ -15,48 +15,51 @@ import {PluginClones} from "../core/plugin/PluginClones.sol";
 import {Plugin} from "../core/plugin/Plugin.sol";
 import {PluginTransparentUpgradeable} from "../core/plugin/PluginTransparentUpgradeable.sol";
 
-/*
-library PluginManagerLib {
+library PluginManagementLib {
     using ERC165Checker for address;
-    
-    struct Deployment {
+
+    // Placeholder to use when referencing the DAO
+    address private constant DAO_ADDRESS = address(-1);
+
+    struct ContractDeployment {
         // gets returned by the dev and describes what function should be called after deployment.
         bytes initData;
         // Aragon's custom init data which describes what function should be called after initData is called.
-        bytes additionalInitData;
+        bytes internalInitData;
         // (bytecode + constructor arguments)
         bytes initCode;
     }
 
-    struct Data {
-        address dao;
+    struct InstallContext {
+        // address dao;
         address installer;
         bytes32 salt;
         bytes params;
-        Deployment[] plugins;
-        Deployment[] helpers;
+        ContractDeployment plugin;
+        // ContractDeployment[] helpers;
         Permission.ItemMultiTarget[] permissions;
     }
 
     function init(
-        address dao,
+        // address dao,
         address installer,
         bytes32 salt,
         bytes memory params
-    ) internal pure returns (Data memory data) {
-        data.dao = dao;
+    ) internal pure returns (InstallContext memory data) {
+        // data.dao = dao;
         data.installer = installer;
         data.salt = salt;
         data.params = params;
     }
 
+    /*
     /// Used as an advanced way - if developer wants the plugin to be out of our interfaces.
     function addPlugin(
-        Data memory self,
+        InstallContext memory self,
         bytes memory initCode,
         bytes memory initData
     ) internal pure returns (address deploymentAddress) {
-        Deployment memory newDeployment = Deployment(initData, bytes(""), initCode);
+        ContractDeployment memory newDeployment = ContractDeployment(initData, bytes(""), initCode);
         (self.plugins, deploymentAddress) = _addDeploy(
             self.salt,
             self.installer,
@@ -64,18 +67,21 @@ library PluginManagerLib {
             newDeployment
         );
     }
+    */
 
     /// Normal/Recommended way - if developer wants the plugin to be one of our interface.
     /// In case dev wants to deploy his plugin with `new` keyword:
     ///     * implementation must be zero
     ///     * initData should contain bytecode + constructor arguments as encoded.
-    ///     * dev can directly opt in to use advanced `addPlugin` above for this case as well. Though,
+    ///     * dev can directly opt in to use advanced `deployPlugin` above for this case as well. Though,
     ///     if so, and dev also wants to call some initialization function right away, it won't be possible.
     /// In case dev wants to deploy with our uups, transparent, clone that also use aragon's permissions
     ///     * implementation must be a base address
     ///     * initData should contain function selector + encoded arguments.
-    function addPlugin(
-        Data memory self,
+
+    // THERE IS ONLY ONE PLUGIN
+    function deployPlugin(
+        InstallContext memory self,
         address implementation,
         bytes memory initData
     ) internal view returns (address deploymentAddress) {
@@ -83,28 +89,29 @@ library PluginManagerLib {
             revert("TODO: ADD MESSAGE");
         }
 
-        (bytes memory initCode, bytes memory additionalInitData) = calculateInitCode(
+        (bytes memory initCode, bytes memory internalInitData) = calculateInitCode(
             self,
             implementation,
             initData
         );
 
-        Deployment memory newDeployment = Deployment(initData, additionalInitData, initCode);
-        (self.plugins, deploymentAddress) = _addDeploy(
+        self.plugin = ContractDeployment(initData, internalInitData, initCode);
+
+        deploymentAddress = Create2.computeAddress(
             self.salt,
-            self.installer,
-            self.plugins,
-            newDeployment
+            keccak256(newDeployment.initCode),
+            installer
         );
     }
 
+    /*
     /// Used as an advanced way - if developer wants the plugin to be out of our interfaces.
     function addHelper(
-        Data memory self,
+        InstallContext memory self,
         bytes memory initCode,
         bytes memory initData
     ) internal pure returns (address deploymentAddress) {
-        Deployment memory newDeployment = Deployment(initData, bytes(""), initCode);
+        ContractDeployment memory newDeployment = ContractDeployment(initData, bytes(""), initCode);
         (self.helpers, deploymentAddress) = _addDeploy(
             self.salt,
             self.installer,
@@ -115,20 +122,20 @@ library PluginManagerLib {
 
     /// Normal/Recommended way - if developer wants the helper to be one of our interface.
     function addHelper(
-        Data memory self,
+        InstallContext memory self,
         address implementation,
         bytes memory initData
     ) internal view returns (address deploymentAddress) {
         if (implementation == address(0)) {
             revert("TODO: ADD MESSAGE");
         }
-        (bytes memory initCode, bytes memory additionalInitData) = calculateInitCode(
+        (bytes memory initCode, bytes memory internalInitData) = calculateInitCode(
             self,
             implementation,
             initData
         );
 
-        Deployment memory newDeployment = Deployment(initData, additionalInitData, initCode);
+        ContractDeployment memory newDeployment = ContractDeployment(initData, internalInitData, initCode);
         (self.helpers, deploymentAddress) = _addDeploy(
             self.salt,
             self.installer,
@@ -140,10 +147,10 @@ library PluginManagerLib {
     function _addDeploy(
         bytes32 salt,
         address installer,
-        Deployment[] memory currentDeployments,
-        Deployment memory newDeployment
-    ) internal pure returns (Deployment[] memory newDeployments, address deploymentAddress) {
-        newDeployments = new Deployment[](currentDeployments.length + 1);
+        ContractDeployment[] memory currentDeployments,
+        ContractDeployment memory newDeployment
+    ) internal pure returns (ContractDeployment[] memory newDeployments, address deploymentAddress) {
+        newDeployments = new ContractDeployment[](currentDeployments.length + 1);
 
         // TODO: more efficient copy
         for (uint256 i = 0; i < currentDeployments.length; i++) {
@@ -160,12 +167,13 @@ library PluginManagerLib {
             installer
         );
     }
+*/
 
     function calculateInitCode(
-        Data memory self,
+        InstallContext memory self,
         address implementation,
         bytes memory // initData
-    ) internal view returns (bytes memory initCode, bytes memory additionalInitData) {
+    ) internal view returns (bytes memory initCode, bytes memory internalInitData) {
         if (implementation.supportsInterface(type(PluginUUPSUpgradeable).interfaceId)) {
             bytes memory bytecodeWithArgs = abi.encodePacked(
                 type(PluginERC1967Proxy).creationCode,
@@ -178,7 +186,7 @@ library PluginManagerLib {
         } else if (implementation.supportsInterface(type(PluginClones).interfaceId)) {
             initCode = bytecodeAt(implementation);
 
-            additionalInitData = abi.encodeWithSelector(
+            internalInitData = abi.encodeWithSelector(
                 bytes4(keccak256("clonesInit(address)")),
                 self.dao
             );
@@ -195,8 +203,8 @@ library PluginManagerLib {
         }
     }
 
-    function addPermission(
-        Data memory self,
+    function requestPermission(
+        InstallContext memory self,
         Permission.Operation op,
         address where,
         address who,
@@ -225,27 +233,17 @@ library PluginManagerLib {
         self.permissions = newPermissions;
     }
 }
-*/
 
 /// NOTE: This is an untested code and should NOT be used in production.
 /// @notice Abstract Plugin Factory that dev's have to inherit from for their factories.
 abstract contract PluginManager {
     bytes4 public constant PLUGIN_MANAGER_INTERFACE_ID = type(PluginManager).interfaceId;
+    address public constant IMPLEMENTATION_ADDRESS;
 
-    function deploy(bytes memory data)
+    function deploy(PluginManagementLib.InstallContext memory context, bytes memory initData)
         public
         virtual
-        returns (Permission.ItemMultiTarget[] permissions);
-
-    // function onUpdate(
-    //     address proxy,
-    //     uint16[3] calldata oldVersion,
-    //     bytes memory data
-    // ) public returns (bytes memory newInitData) {
-    //     // TODO: UNRESOLVED
-    //     // Define how to reconfigure the target plugin
-    //     // The Plugin Manager address will be different on each version
-    // }
+        returns (PluginManagementLib.InstallContext memory);
 
     /*
     function getInstallInstruction(
@@ -253,8 +251,8 @@ abstract contract PluginManager {
         bytes32 salt,
         address deployer,
         bytes memory params
-    ) public view returns (PluginManagerLib.Data memory) {
-        PluginManagerLib.Data memory installation = PluginManagerLib.init(
+    ) public view returns (PluginManagementLib.InstallContext memory) {
+        PluginManagementLib.InstallContext memory installation = PluginManagementLib.init(
             dao,
             deployer,
             salt,
@@ -263,11 +261,11 @@ abstract contract PluginManager {
         return _getInstallInstruction(installation);
     }
 
-    function _getInstallInstruction(PluginManagerLib.Data memory installation)
+    function _getInstallInstruction(PluginManagementLib.InstallContext memory installation)
         internal
         view
         virtual
-        returns (PluginManagerLib.Data memory);
+        returns (PluginManagementLib.InstallContext memory);
 
     function getUpdateInstruction(
         uint16[3] calldata oldVersion,
@@ -276,16 +274,16 @@ abstract contract PluginManager {
         bytes32 salt,
         address deployer,
         bytes memory params
-    ) public view returns (PluginManagerLib.Data memory, bytes memory) {
-        PluginManagerLib.Data memory update = PluginManagerLib.init(dao, deployer, salt, params);
+    ) public view returns (PluginManagementLib.InstallContext memory, bytes memory) {
+        PluginManagementLib.InstallContext memory update = PluginManagementLib.init(dao, deployer, salt, params);
         return _getUpdateInstruction(proxy, oldVersion, update);
     }
 
     function _getUpdateInstruction(
         address proxy,
         uint16[3] calldata oldVersion,
-        PluginManagerLib.Data memory installation
-    ) internal view virtual returns (PluginManagerLib.Data memory, bytes memory) {}
+        PluginManagementLib.InstallContext memory installation
+    ) internal view virtual returns (PluginManagementLib.InstallContext memory, bytes memory) {}
 
     /// @notice the plugin's base implementation address proxies need to delegate calls.
     /// @return address of the base contract address.
