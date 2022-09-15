@@ -53,12 +53,20 @@ contract CounterV1 is PluginUUPSUpgradeable {
         address pluginInstaller,
         PluginInstallRequest pluginInfo
     ) {
-        // Resolve pluginInfo.pluginId => version => PluginManager
+        // Ideally, resolve pluginInfo.pluginId => version => new PluginManager addr
 
-        uint256 deploymentId = PluginInstaller(pluginInstaller).createDeployment(
-            daoAddress,
-            plugin
-        );
+        // Encode plugin deployment request
+        bytes32 memory updateData = abi.encode(0x1234, (bytes2));
+        PluginInstallParams installParams = PluginInstallParams(newPluginManager, updateData);
+
+        IDAO.Action[] actionList = [
+            // ENCODE ( __ pluginInstaller.createDeployment(daoAddress, installParams) __ )
+        ];
+        // TODO: callID/proposalID needs to be unique => salted+hashed
+        bytes memory results = this.dao().execute(proposalId, actionList);
+
+        // TODO: parse deploymentId from results
+        (uint256 deploymentId) = abi.decode(results, (uint256));
 
         // Store proposal ID => deploymentID
         proposals[proposalCount].push(Proposal(proposalCount, false, true, deploymentId, []));
