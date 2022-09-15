@@ -37,7 +37,6 @@ contract PluginInstaller {
 
     struct PluginDeployment {
         bool done;
-        IDAO dao;
         ContractDeployment pluginParams;
         ItemMultiTarget[] permissions;
     }
@@ -73,8 +72,10 @@ contract PluginInstaller {
     /// @param oldVersion the old version plugin is upgrading from.
     event PluginUpdated(address dao, address plugin, uint16[3] oldVersion, bytes data);
 
-    uint256 public permissionDeploymentCount = 0;
-    mapping(uint256 => PluginDeployment[]) public pluginDeployments;
+    mapping(address => uint256) public permissionDeploymentCounts;
+
+    // pluginDeployments[daoAddr][idx]
+    mapping(address => mapping(uint256 => PluginDeployment[])) public pluginDeployments;
 
     // Called via Plugin => DAO.execute(...) when a proposal is being created
     function createDeployment(PluginInstallParams calldata plugin)
@@ -91,34 +92,35 @@ contract PluginInstaller {
         // TODO: try/catch or manager.supportsInterface()
         context = plugin.manager.deploy(context);
 
-        pluginDeployments[permissionDeploymentCount].plugin = context.plugin;
-        pluginDeployments[permissionDeploymentCount].permissions = context.permissions;
-        pluginDeployments[permissionDeploymentCount].dao = IDAO(msg.sender);
-        // pluginDeployments[permissionDeploymentCount].done = false;
-        permissionDeploymentCount++;
+        uint256 idx = permissionDeploymentCounts[msg.sender];
+        pluginDeployments[msg.sender][idx].plugin = context.plugin;
+        pluginDeployments[msg.sender][idx].permissions = context.permissions;
+        // pluginDeployments[msg.sender][idx].done = false;
+        permissionDeploymentCounts[msg.sender]++;
 
         // emit PermissionDeploymentRegistered(pluginAddress);
-        return permissionDeploymentCount - 1;
+        return idx;
     }
 
     // Called via Plugin => DAO.execute(...)
     function commitDeployment(uint256 permissionDeploymentId) {
-        if (permissionDeploymentId >= permissionDeploymentCount) revert("");
-        else if (pluginDeployments[permissionDeploymentId].done) revert("");
-        else if (address(pluginDeployments[permissionDeploymentId].dao) != msg.sender) revert("");
+        if (permissionDeploymentId >= permissionDeploymentCounts[msg.sender]) revert("");
+        else if (pluginDeployments[msg.sender][permissionDeploymentId].done) revert("");
 
         // Deploy the plugin
         // TODO: Get the instructions
         // TODO: Deploy with Create2
 
         // Apply permissions
-        DAO(payable(dao)).bulkOnMultiTarget(pluginDeployments[permissionDeploymentId].permissions);
+        DAO(payable(dao)).bulkOnMultiTarget(
+            pluginDeployments[msg.sender][permissionDeploymentId].permissions
+        );
 
         // TODO: grant ourselves permission to call onUpdate() on the plugin
         // DAO(payable(dao)).grant(plugin, this, UPDATE_HOOK_PERMISSION);
 
         // done
-        pluginDeployments[permissionDeploymentId].done = true;
+        pluginDeployments[msg.sender][permissionDeploymentId].done = true;
 
         // emit event
     }
