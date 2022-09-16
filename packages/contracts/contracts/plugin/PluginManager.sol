@@ -33,14 +33,6 @@ abstract contract PluginManager {
         return associatedContracts[_nonce][1];
     }
 
-    struct SetupInstruction {
-        BulkPermissionsLib.ItemMultiTarget[] permissionOperations;
-        address proxy;
-        address newLogic;
-    }
-
-    mapping(DAO => mapping(uint256 => SetupInstruction)) setupInstructions;
-
     function getImplementationAddress() public view virtual returns (address);
 
     // deploys contracts and stores contracts
