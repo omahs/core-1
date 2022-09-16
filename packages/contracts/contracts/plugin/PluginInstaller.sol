@@ -41,7 +41,7 @@ contract PluginInstaller is ReentrancyGuard {
     function _update(PluginManager _pluginManager, uint256 _nonce) internal {
         _process(
             DAO(payable(_pluginManager.getDaoAddress(_nonce))),
-            _pluginManager.getInstallPermissionOps(_nonce)
+            _pluginManager.getUpdatePermissionOps(_nonce)
         );
 
         //_pluginManager.postUpdateHook(); // TODO
@@ -80,7 +80,7 @@ contract PluginInstaller is ReentrancyGuard {
         PluginManager _pluginManager,
         uint256 _nonce
     ) external installingDaoCheck(_pluginManager, _nonce) {
-        _process(_dao, _pluginManager.getInstallPermissionOps(_nonce));
+        _process(_dao, _pluginManager.getUninstallPermissionOps(_nonce));
 
         //_pluginManager.postUninstallHook(); // TODO
 
