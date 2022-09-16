@@ -26,9 +26,7 @@ contract CounterV1PluginManager is PluginManager {
         return associatedContracts[_nonce][2];
     }
 
-    function install(address dao, bytes memory data) external virtual override {
-        ++nonce;
-
+    function _install(address dao, bytes memory data) internal virtual override {
         // Decode the parameters from the UI
         (address _multiplyHelper, uint256 _num) = abi.decode(data, (address, uint256));
 
@@ -45,7 +43,10 @@ contract CounterV1PluginManager is PluginManager {
         associatedContracts[nonce][1] = counter;
         associatedContracts[nonce][2] = _multiplyHelper;
 
-        CounterV1(counter).initialize(MultiplyHelper(_multiplyHelper), _num); // what if a permission is needed?
+        CounterV1(counter).initialize(MultiplyHelper(_multiplyHelper), _num);
+
+        // increment for the next deployment
+        ++nonce;
     }
 
     function getInstallPermissionOps(uint256 _nonce)

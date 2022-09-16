@@ -17,7 +17,7 @@ contract PluginManagerMock is PluginManager {
         return basePluginAddress;
     }
 
-    function install(address _dao, bytes memory _data) external virtual override {}
+    function _install(address _dao, bytes memory _data) internal virtual override {}
 
     function getInstallPermissionOps(uint256 _nonce)
         external

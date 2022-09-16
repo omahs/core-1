@@ -25,6 +25,10 @@ abstract contract PluginManager {
         _;
     }
 
+    function incrementNonce() internal {
+        nonce++;
+    }
+
     function getDaoAddress(uint256 _nonce) public view returns (address) {
         return associatedContracts[_nonce][0];
     }
@@ -35,16 +39,32 @@ abstract contract PluginManager {
 
     function getImplementationAddress() public view virtual returns (address);
 
-    // deploys contracts and stores contracts
-    function install(address _dao, bytes memory _data) external virtual;
+    function install(address _dao, bytes memory _data) external returns (uint256 deploymentNonce) {
+        incrementNonce();
+        _install(_dao, _data);
+        return nonce;
+    }
 
     function update(
         PluginManager _oldPluginManager,
         uint256 _oldNonce,
-        bytes memory data
-    ) external virtual {}
+        bytes memory _data
+    ) external returns (uint256 deploymentNonce) {
+        incrementNonce();
+        _update(_oldPluginManager, _oldNonce, _data);
+        return nonce;
+    }
 
-    function uninstall(bytes memory data) external virtual {}
+    function _install(address _dao, bytes memory _data) internal virtual;
+
+    function _update(
+        PluginManager _oldPluginManager,
+        uint256 _oldNonce,
+        bytes memory _data
+    ) internal virtual {}
+
+    // No deployment takes place here - so no need to return a nonce
+    function uninstall(bytes memory data) internal virtual {}
 
     function getInstallPermissionOps(uint256 _nonce)
         external

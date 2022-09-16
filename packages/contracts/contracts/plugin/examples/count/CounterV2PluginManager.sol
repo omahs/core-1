@@ -28,7 +28,7 @@ contract CounterV2PluginManager is PluginManager {
         return associatedContracts[_nonce][2];
     }
 
-    function install(address dao, bytes memory data) external virtual override {
+    function _install(address dao, bytes memory data) internal virtual override {
         // This changes as in V2, initialize now expects 3 arguments..
         // Decode the parameters from the UI
         (address _multiplyHelper, uint256 _num, uint256 _newVariable) = abi.decode(
@@ -51,11 +51,11 @@ contract CounterV2PluginManager is PluginManager {
         associatedContracts[nonce][2] = _multiplyHelper;
     }
 
-    function update(
+    function _update(
         PluginManager _oldPluginManager,
         uint256 _oldNonce,
         bytes memory data
-    ) external virtual override {
+    ) internal virtual override {
         address whoCanCallMultiply = abi.decode(data, (address));
 
         associatedContracts[nonce] = new address[](associatedContractsCount);
