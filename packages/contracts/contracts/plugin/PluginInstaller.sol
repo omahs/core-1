@@ -17,13 +17,13 @@ contract PluginInstaller is ReentrancyGuard {
     error WrongInstallingDao(address expected, address actual);
     error PluginNotUpgradable();
 
-    function install(PluginManager _pluginManager, uint256 _nonce)
+    function install(PluginManager _pluginManager, uint256 _deploymentId)
         external
-        installingDaoCheck(_pluginManager, _nonce)
+        installingDaoCheck(_pluginManager, _deploymentId)
     {
         _process(
-            DAO(payable(_pluginManager.getDaoAddress(_nonce))),
-            _pluginManager.getInstallPermissionOps(_nonce)
+            DAO(payable(_pluginManager.getDaoAddress(_deploymentId))),
+            _pluginManager.getInstallPermissionOps(_deploymentId)
         );
 
         //_pluginManager.postInstallHook(); // TODO
@@ -31,17 +31,17 @@ contract PluginInstaller is ReentrancyGuard {
         emit PluginInstalled();
     }
 
-    function updateWithoutUpgrade(PluginManager _pluginManager, uint256 _nonce)
+    function updateWithoutUpgrade(PluginManager _pluginManager, uint256 _deploymentId)
         external
-        installingDaoCheck(_pluginManager, _nonce)
+        installingDaoCheck(_pluginManager, _deploymentId)
     {
-        _update(_pluginManager, _nonce);
+        _update(_pluginManager, _deploymentId);
     }
 
-    function _update(PluginManager _pluginManager, uint256 _nonce) internal {
+    function _update(PluginManager _pluginManager, uint256 _deploymentId) internal {
         _process(
-            DAO(payable(_pluginManager.getDaoAddress(_nonce))),
-            _pluginManager.getUpdatePermissionOps(_nonce)
+            DAO(payable(_pluginManager.getDaoAddress(_deploymentId))),
+            _pluginManager.getUpdatePermissionOps(_deploymentId)
         );
 
         //_pluginManager.postUpdateHook(); // TODO
@@ -51,17 +51,17 @@ contract PluginInstaller is ReentrancyGuard {
 
     function updateWithUpgrade(
         PluginManager _oldPluginManager,
-        uint256 _oldNonce,
+        uint256 _oldDeploymentId,
         PluginManager _newPluginManager,
-        uint256 _newNonce
+        uint256 _newDeploymentId
     )
         external
-        installingDaoCheck(_oldPluginManager, _oldNonce)
-        installingDaoCheck(_newPluginManager, _newNonce)
+        installingDaoCheck(_oldPluginManager, _oldDeploymentId)
+        installingDaoCheck(_newPluginManager, _newDeploymentId)
     {
         // Upgrade the contract
         AragonUpgradablePlugin proxy = AragonUpgradablePlugin(
-            _oldPluginManager.getPluginAddress(_oldNonce)
+            _oldPluginManager.getPluginAddress(_oldDeploymentId)
         );
 
         // TODO
@@ -69,18 +69,18 @@ contract PluginInstaller is ReentrancyGuard {
             revert PluginNotUpgradable();
         } */
 
-        proxy.upgradeToAndCall(_newPluginManager.getPluginAddress(_newNonce), "0x");
+        proxy.upgradeToAndCall(_newPluginManager.getPluginAddress(_newDeploymentId), "0x");
 
         // Update permissions
-        _update(_newPluginManager, _newNonce);
+        _update(_newPluginManager, _newDeploymentId);
     }
 
     function uninstall(
         DAO _dao,
         PluginManager _pluginManager,
-        uint256 _nonce
-    ) external installingDaoCheck(_pluginManager, _nonce) {
-        _process(_dao, _pluginManager.getUninstallPermissionOps(_nonce));
+        uint256 _deploymentId
+    ) external installingDaoCheck(_pluginManager, _deploymentId) {
+        _process(_dao, _pluginManager.getUninstallPermissionOps(_deploymentId));
 
         //_pluginManager.postUninstallHook(); // TODO
 
@@ -94,9 +94,9 @@ contract PluginInstaller is ReentrancyGuard {
         _dao.bulkOnMultiTarget(_permissions);
     }
 
-    modifier installingDaoCheck(PluginManager _pluginManager, uint256 _nonce) {
+    modifier installingDaoCheck(PluginManager _pluginManager, uint256 _deploymentId) {
         address installingDao = msg.sender;
-        address associatedDao = _pluginManager.getDaoAddress(_nonce);
+        address associatedDao = _pluginManager.getDaoAddress(_deploymentId);
 
         if (installingDao != associatedDao) {
             revert WrongInstallingDao({expected: associatedDao, actual: installingDao});

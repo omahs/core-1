@@ -11,85 +11,109 @@ import {DAO} from "../core/DAO.sol";
 abstract contract PluginManager {
     bytes4 public constant PLUGIN_MANAGER_INTERFACE_ID = type(PluginManager).interfaceId;
 
-    uint256 public nonce;
-    uint256 public associatedContractsCount;
+    uint256 public deploymentId;
+    uint256 public helpersCount;
 
-    mapping(uint256 => address[]) associatedContracts; // the array length can vary across plugin version
+    mapping(uint256 => address) private daos;
+    mapping(uint256 => address) private plugins;
+    mapping(uint256 => address[]) private helpers; // the array length can vary across plugin versions
 
     error InvalidLength(uint256 expected, uint256 actual);
 
-    modifier assertAssociatedContractCount(uint256 _nonce) {
-        if (associatedContractsCount != associatedContracts[_nonce].length) {
-            revert InvalidLength(associatedContractsCount, associatedContracts[_nonce].length);
+    modifier assertAssociatedContractCount(uint256 _deploymentId) {
+        if (helpersCount != helpers[_deploymentId].length) {
+            revert InvalidLength(helpersCount, helpers[_deploymentId].length);
         }
         _;
     }
 
-    function incrementNonce() internal {
-        nonce++;
-    }
-
-    function getDaoAddress(uint256 _nonce) public view returns (address) {
-        return associatedContracts[_nonce][0];
-    }
-
-    function getPluginAddress(uint256 _nonce) public view returns (address) {
-        return associatedContracts[_nonce][1];
-    }
-
-    function getImplementationAddress() public view virtual returns (address);
-
-    function install(address _dao, bytes memory _data) external returns (uint256 deploymentNonce) {
+    function install(address _dao, bytes memory _data) external returns (uint256 id) {
         incrementNonce();
-        _install(_dao, _data);
-        return nonce;
+
+        address plugin = _install(_dao, _data);
+
+        // Store the dao and deployed plugin automatically
+        daos[deploymentId] = _dao;
+        plugins[deploymentId] = plugin;
+
+        return deploymentId;
     }
 
     function update(
         PluginManager _oldPluginManager,
         uint256 _oldNonce,
         bytes memory _data
-    ) external returns (uint256 deploymentNonce) {
+    ) external returns (uint256 id) {
         incrementNonce();
-        _update(_oldPluginManager, _oldNonce, _data);
-        return nonce;
+
+        address plugin = _update(_oldPluginManager, _oldNonce, _data);
+
+        address dao = _oldPluginManager.getDaoAddress(_oldNonce);
+
+        // Store the dao and deployed plugin automatically
+        daos[deploymentId] = dao;
+        plugins[deploymentId] = plugin;
+
+        return deploymentId;
     }
 
-    function _install(address _dao, bytes memory _data) internal virtual;
+    function _install(address _dao, bytes memory _data) internal virtual returns (address plugin);
 
     function _update(
         PluginManager _oldPluginManager,
         uint256 _oldNonce,
         bytes memory _data
-    ) internal virtual {}
+    ) internal virtual returns (address plugin) {}
 
-    // No deployment takes place here - so no need to return a nonce
+    // No deployment takes place here - so no need to return a deploymentId
     function uninstall(bytes memory data) internal virtual {}
 
-    function getInstallPermissionOps(uint256 _nonce)
+    function getInstallPermissionOps(uint256 _deploymentId)
         external
         view
         virtual
         returns (BulkPermissionsLib.ItemMultiTarget[] memory);
 
-    function getUpdatePermissionOps(uint256 _nonce)
+    function getUpdatePermissionOps(uint256 _deploymentId)
         external
         view
         virtual
         returns (BulkPermissionsLib.ItemMultiTarget[] memory)
     {}
 
-    function getUninstallPermissionOps(uint256 _nonce)
+    function getUninstallPermissionOps(uint256 _deploymentId)
         external
         view
         virtual
         returns (BulkPermissionsLib.ItemMultiTarget[] memory);
 
-    function postInstallHook(uint256 _nonce) external virtual {}
+    function postInstallHook(uint256 _deploymentId) external virtual {}
 
-    function postUpdateHook(uint256 _nonce) external virtual {}
+    function postUpdateHook(uint256 _deploymentId) external virtual {}
 
     function postUninstallHook() external virtual {}
+
+    function incrementNonce() internal {
+        deploymentId++;
+    }
+
+    function getDaoAddress(uint256 _deploymentId) public view returns (address) {
+        return daos[_deploymentId];
+    }
+
+    function getPluginAddress(uint256 _deploymentId) public view returns (address) {
+        return plugins[_deploymentId];
+    }
+
+    function getHelperAddress(uint256 _deploymentId, uint256 _index) public view returns (address) {
+        return helpers[_deploymentId][_index];
+    }
+
+    function addRelatedHelper(uint256 _deploymentId, address _helper) public {
+        return helpers[_deploymentId].push(_helper);
+    }
+
+    function getImplementationAddress() public view virtual returns (address);
 
     /// @notice helper function to deploy Custom ERC1967Proxy that includes dao slot on it.
     /// @param dao dao address

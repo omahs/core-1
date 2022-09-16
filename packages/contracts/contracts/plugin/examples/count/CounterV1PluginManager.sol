@@ -13,7 +13,7 @@ contract CounterV1PluginManager is PluginManager {
     address private constant NO_ORACLE = address(0);
 
     constructor() {
-        associatedContractsCount = 3;
+        helpersCount = 3;
         multiplyHelperBase = new MultiplyHelper();
         counterBase = new CounterV1();
     }
@@ -22,79 +22,77 @@ contract CounterV1PluginManager is PluginManager {
         return address(counterBase);
     }
 
-    function getMultiplyHelperAddress(uint256 _nonce) internal view returns (address) {
-        return associatedContracts[_nonce][2];
-    }
-
-    function _install(address dao, bytes memory data) internal virtual override {
+    function _install(address dao, bytes memory data)
+        internal
+        virtual
+        override
+        returns (address plugin)
+    {
         // Decode the parameters from the UI
         (address _multiplyHelper, uint256 _num) = abi.decode(data, (address, uint256));
 
         // Deploy the plugin
-        address counter = createProxy(dao, address(counterBase), "0x");
+        plugin = createProxy(dao, address(counterBase), "0x");
 
         if (_multiplyHelper == address(0)) {
             // Deploy some internal helper contract for the Plugin
             _multiplyHelper = createProxy(dao, address(multiplyHelperBase), "0x");
         }
 
-        associatedContracts[nonce] = new address[](3);
-        associatedContracts[nonce][0] = dao;
-        associatedContracts[nonce][1] = counter;
-        associatedContracts[nonce][2] = _multiplyHelper;
+        addRelatedHelper(deploymentId, _multiplyHelper);
 
-        CounterV1(counter).initialize(MultiplyHelper(_multiplyHelper), _num);
+        CounterV1(plugin).initialize(MultiplyHelper(_multiplyHelper), _num);
 
         // increment for the next deployment
-        ++nonce;
+        ++deploymentId;
     }
 
-    function getInstallPermissionOps(uint256 _nonce)
+    function getInstallPermissionOps(uint256 _deploymentId)
         external
         view
         override
-        assertAssociatedContractCount(_nonce)
+        assertAssociatedContractCount(_deploymentId)
         returns (BulkPermissionsLib.ItemMultiTarget[] memory permissionOperations)
     {
         permissionOperations = new BulkPermissionsLib.ItemMultiTarget[](2);
 
         permissionOperations[0] = BulkPermissionsLib.ItemMultiTarget({
             operation: BulkPermissionsLib.Operation.Grant,
-            where: getDaoAddress(_nonce),
-            who: getPluginAddress(_nonce),
+            where: getDaoAddress(_deploymentId),
+            who: getPluginAddress(_deploymentId),
             oracle: NO_ORACLE,
             permissionId: keccak256("EXECUTE_PERMISSION")
         });
         permissionOperations[1] = BulkPermissionsLib.ItemMultiTarget({
             operation: BulkPermissionsLib.Operation.Grant,
-            where: getDaoAddress(_nonce),
-            who: getPluginAddress(_nonce),
+            where: getDaoAddress(_deploymentId),
+            who: getPluginAddress(_deploymentId),
             oracle: NO_ORACLE,
             permissionId: counterBase.MULTIPLY_PERMISSION_ID()
         });
     }
 
-    function getUninstallPermissionOps(uint256 _nonce)
+    function getUninstallPermissionOps(uint256 _deploymentId)
         external
         view
         override
-        assertAssociatedContractCount(_nonce)
+        assertAssociatedContractCount(_deploymentId)
         returns (BulkPermissionsLib.ItemMultiTarget[] memory permissionOperations)
     {
         permissionOperations = new BulkPermissionsLib.ItemMultiTarget[](2);
 
         permissionOperations[0] = BulkPermissionsLib.ItemMultiTarget({
             operation: BulkPermissionsLib.Operation.Revoke,
-            where: getDaoAddress(_nonce),
-            who: getPluginAddress(_nonce),
+            where: getDaoAddress(_deploymentId),
+            who: getPluginAddress(_deploymentId),
             oracle: NO_ORACLE,
             permissionId: keccak256("EXECUTE_PERMISSION")
         });
 
         permissionOperations[1] = BulkPermissionsLib.ItemMultiTarget({
             operation: BulkPermissionsLib.Operation.Revoke,
-            where: getDaoAddress(_nonce),
-            who: getPluginAddress(_nonce),
+            where: getDaoAddress(_deploymentId),
+            who: getPluginAddress(_deploymentId),
             oracle: NO_ORACLE,
             permissionId: counterBase.MULTIPLY_PERMISSION_ID()
         });

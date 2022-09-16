@@ -19,7 +19,7 @@ contract PluginManagerMock is PluginManager {
 
     function _install(address _dao, bytes memory _data) internal virtual override {}
 
-    function getInstallPermissionOps(uint256 _nonce)
+    function getInstallPermissionOps(uint256 _deploymentId)
         external
         view
         virtual
@@ -27,7 +27,7 @@ contract PluginManagerMock is PluginManager {
         returns (BulkPermissionsLib.ItemMultiTarget[] memory)
     {}
 
-    function getUninstallPermissionOps(uint256 _nonce)
+    function getUninstallPermissionOps(uint256 _deploymentId)
         external
         view
         virtual

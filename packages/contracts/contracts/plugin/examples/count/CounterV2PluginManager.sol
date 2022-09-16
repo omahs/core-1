@@ -14,7 +14,7 @@ contract CounterV2PluginManager is PluginManager {
 
     // MultiplyHelper doesn't change. so dev decides to pass the old one.
     constructor(MultiplyHelper _helper) {
-        associatedContractsCount = 3;
+        helpersCount = 3;
 
         multiplyHelperBase = _helper;
         counterBase = new CounterV2();
@@ -24,11 +24,16 @@ contract CounterV2PluginManager is PluginManager {
         return address(counterBase);
     }
 
-    function getMultiplyCallerAddress(uint256 _nonce) internal view returns (address) {
-        return associatedContracts[_nonce][2];
+    function getMultiplyCallerAddress(uint256 _deploymentId) internal view returns (address) {
+        return helpers[_deploymentId][2];
     }
 
-    function _install(address dao, bytes memory data) internal virtual override {
+    function _install(address dao, bytes memory data)
+        internal
+        virtual
+        override
+        returns (address plugin)
+    {
         // This changes as in V2, initialize now expects 3 arguments..
         // Decode the parameters from the UI
         (address _multiplyHelper, uint256 _num, uint256 _newVariable) = abi.decode(
@@ -41,14 +46,11 @@ contract CounterV2PluginManager is PluginManager {
             _multiplyHelper = createProxy(dao, address(multiplyHelperBase), "0x");
         }
 
-        address counter = createProxy(dao, getImplementationAddress(), "0x");
+        plugin = createProxy(dao, getImplementationAddress(), "0x");
 
-        CounterV2(counter).initialize(MultiplyHelper(_multiplyHelper), _num, _newVariable);
+        CounterV2(plugin).initialize(MultiplyHelper(_multiplyHelper), _num, _newVariable);
 
-        associatedContracts[nonce] = new address[](associatedContractsCount);
-        associatedContracts[nonce][0] = dao;
-        associatedContracts[nonce][1] = counter;
-        associatedContracts[nonce][2] = _multiplyHelper;
+        addRelatedHelper(deploymentId, _multiplyHelper);
     }
 
     function _update(
@@ -56,15 +58,16 @@ contract CounterV2PluginManager is PluginManager {
         uint256 _oldNonce,
         bytes memory data
     ) internal virtual override {
+        //TODO check that `oldPluginManager` is in the same `PluginRepo` and that the version is lower
+        // require(...);
+
+        //decode data
         address whoCanCallMultiply = abi.decode(data, (address));
 
-        associatedContracts[nonce] = new address[](associatedContractsCount);
-        associatedContracts[nonce][0] = _oldPluginManager.getDaoAddress(_oldNonce);
-        associatedContracts[nonce][1] = _oldPluginManager.getPluginAddress(_oldNonce); // the plugin
-        associatedContracts[nonce][2] = whoCanCallMultiply;
+        addRelatedHelper(deploymentId, whoCanCallMultiply);
     }
 
-    function getInstallPermissionOps(uint256 _nonce)
+    function getInstallPermissionOps(uint256 _deploymentId)
         external
         view
         override
@@ -74,30 +77,30 @@ contract CounterV2PluginManager is PluginManager {
 
         permissionOperations[0] = BulkPermissionsLib.ItemMultiTarget({
             operation: BulkPermissionsLib.Operation.Grant,
-            where: getDaoAddress(_nonce),
-            who: getPluginAddress(_nonce),
+            where: getDaoAddress(_deploymentId),
+            who: getPluginAddress(_deploymentId),
             oracle: NO_ORACLE,
             permissionId: keccak256("EXECUTE_PERMISSION")
         });
 
         permissionOperations[1] = BulkPermissionsLib.ItemMultiTarget({
             operation: BulkPermissionsLib.Operation.Grant,
-            where: getPluginAddress(_nonce),
-            who: getDaoAddress(_nonce),
+            where: getPluginAddress(_deploymentId),
+            who: getDaoAddress(_deploymentId),
             oracle: NO_ORACLE,
             permissionId: counterBase.MULTIPLY_PERMISSION_ID()
         });
 
         permissionOperations[2] = BulkPermissionsLib.ItemMultiTarget({
             operation: BulkPermissionsLib.Operation.Grant,
-            where: getPluginAddress(_nonce), // multiplyHelper
-            who: getMultiplyCallerAddress(_nonce),
+            where: getPluginAddress(_deploymentId), // multiplyHelper
+            who: getMultiplyCallerAddress(_deploymentId),
             oracle: NO_ORACLE,
             permissionId: counterBase.MULTIPLY_PERMISSION_ID()
         });
     }
 
-    function getUpdatePermissionOps(uint256 _nonce)
+    function getUpdatePermissionOps(uint256 _deploymentId)
         external
         view
         override
@@ -107,22 +110,22 @@ contract CounterV2PluginManager is PluginManager {
 
         permissionOperations[0] = BulkPermissionsLib.ItemMultiTarget({
             operation: BulkPermissionsLib.Operation.Revoke,
-            where: getPluginAddress(_nonce),
-            who: getDaoAddress(_nonce),
+            where: getPluginAddress(_deploymentId),
+            who: getDaoAddress(_deploymentId),
             oracle: NO_ORACLE,
             permissionId: counterBase.MULTIPLY_PERMISSION_ID()
         });
 
         permissionOperations[1] = BulkPermissionsLib.ItemMultiTarget({
             operation: BulkPermissionsLib.Operation.Grant,
-            where: getPluginAddress(_nonce),
-            who: getMultiplyCallerAddress(_nonce),
+            where: getPluginAddress(_deploymentId),
+            who: getMultiplyCallerAddress(_deploymentId),
             oracle: NO_ORACLE,
             permissionId: counterBase.MULTIPLY_PERMISSION_ID()
         });
     }
 
-    function getUninstallPermissionOps(uint256 _nonce)
+    function getUninstallPermissionOps(uint256 _deploymentId)
         external
         view
         override
@@ -132,16 +135,16 @@ contract CounterV2PluginManager is PluginManager {
 
         permissionOperations[0] = BulkPermissionsLib.ItemMultiTarget({
             operation: BulkPermissionsLib.Operation.Revoke,
-            where: getDaoAddress(_nonce),
-            who: getPluginAddress(_nonce),
+            where: getDaoAddress(_deploymentId),
+            who: getPluginAddress(_deploymentId),
             oracle: NO_ORACLE,
             permissionId: keccak256("EXECUTE_PERMISSION")
         });
 
         permissionOperations[1] = BulkPermissionsLib.ItemMultiTarget({
             operation: BulkPermissionsLib.Operation.Revoke,
-            where: getPluginAddress(_nonce),
-            who: getMultiplyCallerAddress(_nonce),
+            where: getPluginAddress(_deploymentId),
+            who: getMultiplyCallerAddress(_deploymentId),
             oracle: NO_ORACLE,
             permissionId: counterBase.MULTIPLY_PERMISSION_ID()
         });
