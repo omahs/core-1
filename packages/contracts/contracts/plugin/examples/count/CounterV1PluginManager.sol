@@ -60,7 +60,7 @@ contract CounterV1PluginManager is PluginManager {
 
         permissionOperations[0] = BulkPermissionsLib.ItemMultiTarget({
             operation: BulkPermissionsLib.Operation.Grant,
-            where: getPluginAddress(_nonce),
+            where: getDaoAddress(_nonce),
             who: getPluginAddress(_nonce),
             oracle: NO_ORACLE,
             permissionId: keccak256("EXECUTE_PERMISSION")
