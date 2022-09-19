@@ -64,12 +64,19 @@ contract PluginInstaller is ReentrancyGuard {
             _oldPluginManager.getPluginAddress(_oldDeploymentId)
         );
 
-        // TODO
-        /* if (!proxy.supportsInterface("UUPSUpgradable")) {
-            revert PluginNotUpgradable();
-        } */
+        (address plugin, bytes memory initData) = _newPluginManager.update(
+            _oldPluginManager,
+            _oldDeploymentId,
+            _data
+        );
 
-        proxy.upgradeToAndCall(_newPluginManager.getPluginAddress(_newDeploymentId), "0x");
+        if (initData.length > 0) {
+            plugin.upgradeToAndCall(_newPluginManager.getPluginAddress(_newDeploymentId), "0x");
+        }
+        else {
+            plugin.upgradeTo(_newPluginManager)
+        }
+
 
         // Update permissions
         _update(_newPluginManager, _newDeploymentId);

@@ -46,13 +46,16 @@ abstract contract PluginManager {
     ) external returns (uint256 id) {
         incrementNonce();
 
-        address plugin = _update(_oldPluginManager, _oldNonce, _data);
+        address proxy = _oldPluginManager.getPluginAddress(_oldNonce);
+        // TODO make sure the plugin is UUPSUpgradable proxy
 
         address dao = _oldPluginManager.getDaoAddress(_oldNonce);
 
-        // Store the dao and deployed plugin automatically
+        _update()
+
         daos[deploymentId] = dao;
-        plugins[deploymentId] = plugin;
+
+        plugins[deploymentId] = proxy;
 
         return deploymentId;
     }
@@ -63,7 +66,7 @@ abstract contract PluginManager {
         PluginManager _oldPluginManager,
         uint256 _oldNonce,
         bytes memory _data
-    ) internal virtual returns (address plugin) {}
+    ) internal virtual (address plugin, bytes data) {}
 
     // No deployment takes place here - so no need to return a deploymentId
     function uninstall(bytes memory data) internal virtual {}
