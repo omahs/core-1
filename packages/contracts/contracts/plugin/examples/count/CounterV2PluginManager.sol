@@ -28,7 +28,7 @@ contract CounterV2PluginManager is PluginManager {
         return helpers[_deploymentId][2];
     }
 
-    function _install(address dao, bytes memory data)
+    function _prepareInstall(address dao, bytes memory data)
         internal
         virtual
         override
@@ -53,18 +53,20 @@ contract CounterV2PluginManager is PluginManager {
         addRelatedHelper(deploymentId, _multiplyHelper);
     }
 
-    function _update(
+    function _prepareUpdateWithUpgrade(
         PluginManager _oldPluginManager,
-        uint256 _oldNonce,
+        uint256 _oldDeploymentId,
         bytes memory data
-    ) internal virtual override returns (bytes initData) {
+    ) internal virtual override returns (bytes memory initData) {
         //decode data
         address whoCanCallMultiply = abi.decode(data, (address));
 
         addRelatedHelper(deploymentId, whoCanCallMultiply);
 
-        // TODO: pepare init data
-        bytes initData;
+        // optionally, access old `_oldPluginManager` state of the old deployments
+
+        // prepare init data
+        initData = abi.encode(123);
     }
 
     function getInstallPermissionOps(uint256 _deploymentId)

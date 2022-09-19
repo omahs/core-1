@@ -16,7 +16,8 @@ abstract contract PluginManager {
 
     mapping(uint256 => address) private daos;
     mapping(uint256 => address) private plugins;
-    mapping(uint256 => address[]) private helpers; // the array length can vary across plugin versions
+    mapping(uint256 => address[]) internal helpers; // the array length can vary across plugin versions
+    mapping(uint256 => bytes) internal initDatas;
 
     error InvalidLength(uint256 expected, uint256 actual);
 
@@ -27,53 +28,91 @@ abstract contract PluginManager {
         _;
     }
 
-    function install(address _dao, bytes memory _data) external returns (uint256 id) {
-        incrementNonce();
-
-        address plugin = _install(_dao, _data);
+    // calls _install and makes sure the DAO and plugin (proxy) addresses are
+    function prepareInstall(address _dao, bytes memory _data) external returns (uint256) {
+        incrementDeploymentId();
 
         // Store the dao and deployed plugin automatically
         daos[deploymentId] = _dao;
-        plugins[deploymentId] = plugin;
+        plugins[deploymentId] = _prepareInstall(_dao, _data);
 
         return deploymentId;
     }
 
-    function update(
+    function prepareUpdateWithoutUpgrade(
         PluginManager _oldPluginManager,
-        uint256 _oldNonce,
+        uint256 _oldDeploymentId,
         bytes memory _data
-    ) external returns (uint256 id) {
-        //TODO check that `oldPluginManager` is in the same `PluginRepo` and that the version is lower
+    ) external returns (uint256) {
+        //TODO check that `oldPluginManager` is in the same `PluginRepo` and that the version bump is allowed
         // require(...);
 
+        // TODO
+        // if(oldVersion = 1.2.3)...
+        // else if(oldVersion = 1.1.2)...
 
-        incrementNonce();
+        incrementDeploymentId();
 
-        address proxy = _oldPluginManager.getPluginAddress(_oldNonce);
-        // TODO make sure the plugin is UUPSUpgradable proxy
-
-        address dao = _oldPluginManager.getDaoAddress(_oldNonce);
-
-        _update()
-
-        daos[deploymentId] = dao;
-
-        plugins[deploymentId] = proxy;
+        // Store the dao and deployed plugin automatically
+        daos[deploymentId] = _oldPluginManager.getDaoAddress(_oldDeploymentId);
+        plugins[deploymentId] = _prepareUpdateWithoutUpgrade(
+            _oldPluginManager,
+            _oldDeploymentId,
+            _data
+        );
 
         return deploymentId;
     }
 
-    function _install(address _dao, bytes memory _data) internal virtual returns (address plugin);
-
-    function _update(
+    function prepareUpdateWithUpgrade(
         PluginManager _oldPluginManager,
-        uint256 _oldNonce,
+        uint256 _oldDeploymentId,
         bytes memory _data
-    ) internal virtual (address plugin, bytes data) {}
+    ) external returns (uint256) {
+        //TODO check that `oldPluginManager` is in the same `PluginRepo` and that the version bump is allowed
+        // require(...);
+
+        // if(version)
+
+        incrementDeploymentId();
+
+        // TODO make sure the plugin is UUPSUpgradable proxy
+
+        // Store the dao and deployed plugin automatically
+        daos[deploymentId] = _oldPluginManager.getDaoAddress(_oldDeploymentId);
+        plugins[deploymentId] = _oldPluginManager.getPluginAddress(_oldDeploymentId); // the proxy contract
+
+        initDatas[deploymentId] = _prepareUpdateWithUpgrade(
+            _oldPluginManager,
+            _oldDeploymentId,
+            _data
+        );
+
+        return deploymentId;
+    }
 
     // No deployment takes place here - so no need to return a deploymentId
-    function uninstall(bytes memory data) internal virtual {}
+    // Needed in the case that devs might want to deploy things for the uninstalltion
+    function prepareUninstall(bytes memory data) internal virtual {}
+
+    function _prepareInstall(address _dao, bytes memory _data)
+        internal
+        virtual
+        returns (address plugin);
+
+    /// @return plugin The address of the newly deployed logic contract
+    function _prepareUpdateWithoutUpgrade(
+        PluginManager _oldPluginManager,
+        uint256 _oldDeploymentId,
+        bytes memory _data
+    ) internal virtual returns (address plugin) {}
+
+    /// @return initData The bytes data to initialize the plugin
+    function _prepareUpdateWithUpgrade(
+        PluginManager _oldPluginManager,
+        uint256 _oldDeploymentId,
+        bytes memory _data
+    ) internal virtual returns (bytes memory initData) {}
 
     function getInstallPermissionOps(uint256 _deploymentId)
         external
@@ -100,7 +139,7 @@ abstract contract PluginManager {
 
     function postUninstallHook() external virtual {}
 
-    function incrementNonce() internal {
+    function incrementDeploymentId() internal {
         deploymentId++;
     }
 
@@ -114,6 +153,10 @@ abstract contract PluginManager {
 
     function getHelperAddress(uint256 _deploymentId, uint256 _index) public view returns (address) {
         return helpers[_deploymentId][_index];
+    }
+
+    function getInitData(uint256 _deploymentId) public view returns (bytes memory) {
+        return initDatas[_deploymentId];
     }
 
     function addRelatedHelper(uint256 _deploymentId, address _helper) public {

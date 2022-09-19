@@ -22,7 +22,7 @@ contract CounterV1PluginManager is PluginManager {
         return address(counterBase);
     }
 
-    function _install(address dao, bytes memory data)
+    function _prepareInstall(address dao, bytes memory data)
         internal
         virtual
         override
@@ -41,6 +41,7 @@ contract CounterV1PluginManager is PluginManager {
 
         addRelatedHelper(deploymentId, _multiplyHelper);
 
+        // initialize it immediately
         CounterV1(plugin).initialize(MultiplyHelper(_multiplyHelper), _num);
 
         // increment for the next deployment
