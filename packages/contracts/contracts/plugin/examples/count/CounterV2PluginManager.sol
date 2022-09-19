@@ -57,21 +57,14 @@ contract CounterV2PluginManager is PluginManager {
         PluginManager _oldPluginManager,
         uint256 _oldNonce,
         bytes memory data
-    ) internal virtual override returns (address plugin, bytes initData) {
-        //TODO check that `oldPluginManager` is in the same `PluginRepo` and that the version is lower
-        // require(...);
-
+    ) internal virtual override returns (bytes initData) {
         //decode data
         address whoCanCallMultiply = abi.decode(data, (address));
 
         addRelatedHelper(deploymentId, whoCanCallMultiply);
 
-        plugin = getImplementationAddress();
-
-        // TODO, pepare init data
+        // TODO: pepare init data
         bytes initData;
-
-        return 
     }
 
     function getInstallPermissionOps(uint256 _deploymentId)

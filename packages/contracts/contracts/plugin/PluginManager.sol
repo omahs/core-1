@@ -44,6 +44,10 @@ abstract contract PluginManager {
         uint256 _oldNonce,
         bytes memory _data
     ) external returns (uint256 id) {
+        //TODO check that `oldPluginManager` is in the same `PluginRepo` and that the version is lower
+        // require(...);
+
+
         incrementNonce();
 
         address proxy = _oldPluginManager.getPluginAddress(_oldNonce);
