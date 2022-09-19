@@ -24,8 +24,8 @@ contract CounterV2PluginManager is PluginManager {
         return address(counterBase);
     }
 
-    function getMultiplyCallerAddress(uint256 _deploymentId) internal view returns (address) {
-        return helpers[_deploymentId][2];
+    function getMultiplyCallerAddress(uint256 _setupId) internal view returns (address) {
+        return helpers[_setupId][2];
     }
 
     function _prepareInstall(address dao, bytes memory data)
@@ -50,18 +50,18 @@ contract CounterV2PluginManager is PluginManager {
 
         CounterV2(plugin).initialize(MultiplyHelper(_multiplyHelper), _num, _newVariable);
 
-        addRelatedHelper(deploymentId, _multiplyHelper);
+        addRelatedHelper(setupId, _multiplyHelper);
     }
 
     function _prepareUpdateWithUpgrade(
         PluginManager _oldPluginManager,
-        uint256 _oldDeploymentId,
+        uint256 _oldSetupId,
         bytes memory data
     ) internal virtual override returns (bytes memory initData) {
         //decode data
         address whoCanCallMultiply = abi.decode(data, (address));
 
-        addRelatedHelper(deploymentId, whoCanCallMultiply);
+        addRelatedHelper(setupId, whoCanCallMultiply);
 
         // optionally, access old `_oldPluginManager` state of the old deployments
 
@@ -69,7 +69,7 @@ contract CounterV2PluginManager is PluginManager {
         initData = abi.encode(123);
     }
 
-    function getInstallPermissionOps(uint256 _deploymentId)
+    function getInstallPermissionOps(uint256 _setupId)
         external
         view
         override
@@ -79,30 +79,30 @@ contract CounterV2PluginManager is PluginManager {
 
         permissionOperations[0] = BulkPermissionsLib.ItemMultiTarget({
             operation: BulkPermissionsLib.Operation.Grant,
-            where: getDaoAddress(_deploymentId),
-            who: getPluginAddress(_deploymentId),
+            where: getDaoAddress(_setupId),
+            who: getPluginAddress(_setupId),
             oracle: NO_ORACLE,
             permissionId: keccak256("EXECUTE_PERMISSION")
         });
 
         permissionOperations[1] = BulkPermissionsLib.ItemMultiTarget({
             operation: BulkPermissionsLib.Operation.Grant,
-            where: getPluginAddress(_deploymentId),
-            who: getDaoAddress(_deploymentId),
+            where: getPluginAddress(_setupId),
+            who: getDaoAddress(_setupId),
             oracle: NO_ORACLE,
             permissionId: counterBase.MULTIPLY_PERMISSION_ID()
         });
 
         permissionOperations[2] = BulkPermissionsLib.ItemMultiTarget({
             operation: BulkPermissionsLib.Operation.Grant,
-            where: getPluginAddress(_deploymentId), // multiplyHelper
-            who: getMultiplyCallerAddress(_deploymentId),
+            where: getPluginAddress(_setupId), // multiplyHelper
+            who: getMultiplyCallerAddress(_setupId),
             oracle: NO_ORACLE,
             permissionId: counterBase.MULTIPLY_PERMISSION_ID()
         });
     }
 
-    function getUpdatePermissionOps(uint256 _deploymentId)
+    function getUpdatePermissionOps(uint256 _setupId)
         external
         view
         override
@@ -112,22 +112,22 @@ contract CounterV2PluginManager is PluginManager {
 
         permissionOperations[0] = BulkPermissionsLib.ItemMultiTarget({
             operation: BulkPermissionsLib.Operation.Revoke,
-            where: getPluginAddress(_deploymentId),
-            who: getDaoAddress(_deploymentId),
+            where: getPluginAddress(_setupId),
+            who: getDaoAddress(_setupId),
             oracle: NO_ORACLE,
             permissionId: counterBase.MULTIPLY_PERMISSION_ID()
         });
 
         permissionOperations[1] = BulkPermissionsLib.ItemMultiTarget({
             operation: BulkPermissionsLib.Operation.Grant,
-            where: getPluginAddress(_deploymentId),
-            who: getMultiplyCallerAddress(_deploymentId),
+            where: getPluginAddress(_setupId),
+            who: getMultiplyCallerAddress(_setupId),
             oracle: NO_ORACLE,
             permissionId: counterBase.MULTIPLY_PERMISSION_ID()
         });
     }
 
-    function getUninstallPermissionOps(uint256 _deploymentId)
+    function getUninstallPermissionOps(uint256 _setupId)
         external
         view
         override
@@ -137,16 +137,16 @@ contract CounterV2PluginManager is PluginManager {
 
         permissionOperations[0] = BulkPermissionsLib.ItemMultiTarget({
             operation: BulkPermissionsLib.Operation.Revoke,
-            where: getDaoAddress(_deploymentId),
-            who: getPluginAddress(_deploymentId),
+            where: getDaoAddress(_setupId),
+            who: getPluginAddress(_setupId),
             oracle: NO_ORACLE,
             permissionId: keccak256("EXECUTE_PERMISSION")
         });
 
         permissionOperations[1] = BulkPermissionsLib.ItemMultiTarget({
             operation: BulkPermissionsLib.Operation.Revoke,
-            where: getPluginAddress(_deploymentId),
-            who: getMultiplyCallerAddress(_deploymentId),
+            where: getPluginAddress(_setupId),
+            who: getMultiplyCallerAddress(_setupId),
             oracle: NO_ORACLE,
             permissionId: counterBase.MULTIPLY_PERMISSION_ID()
         });

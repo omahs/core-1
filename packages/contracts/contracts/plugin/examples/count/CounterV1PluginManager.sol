@@ -39,61 +39,61 @@ contract CounterV1PluginManager is PluginManager {
             _multiplyHelper = createProxy(dao, address(multiplyHelperBase), "0x");
         }
 
-        addRelatedHelper(deploymentId, _multiplyHelper);
+        addRelatedHelper(setupId, _multiplyHelper);
 
         // initialize it immediately
         CounterV1(plugin).initialize(MultiplyHelper(_multiplyHelper), _num);
 
         // increment for the next deployment
-        ++deploymentId;
+        ++setupId;
     }
 
-    function getInstallPermissionOps(uint256 _deploymentId)
+    function getInstallPermissionOps(uint256 _setupId)
         external
         view
         override
-        assertAssociatedContractCount(_deploymentId)
+        assertAssociatedContractCount(_setupId)
         returns (BulkPermissionsLib.ItemMultiTarget[] memory permissionOperations)
     {
         permissionOperations = new BulkPermissionsLib.ItemMultiTarget[](2);
 
         permissionOperations[0] = BulkPermissionsLib.ItemMultiTarget({
             operation: BulkPermissionsLib.Operation.Grant,
-            where: getDaoAddress(_deploymentId),
-            who: getPluginAddress(_deploymentId),
+            where: getDaoAddress(_setupId),
+            who: getPluginAddress(_setupId),
             oracle: NO_ORACLE,
             permissionId: keccak256("EXECUTE_PERMISSION")
         });
         permissionOperations[1] = BulkPermissionsLib.ItemMultiTarget({
             operation: BulkPermissionsLib.Operation.Grant,
-            where: getDaoAddress(_deploymentId),
-            who: getPluginAddress(_deploymentId),
+            where: getDaoAddress(_setupId),
+            who: getPluginAddress(_setupId),
             oracle: NO_ORACLE,
             permissionId: counterBase.MULTIPLY_PERMISSION_ID()
         });
     }
 
-    function getUninstallPermissionOps(uint256 _deploymentId)
+    function getUninstallPermissionOps(uint256 _setupId)
         external
         view
         override
-        assertAssociatedContractCount(_deploymentId)
+        assertAssociatedContractCount(_setupId)
         returns (BulkPermissionsLib.ItemMultiTarget[] memory permissionOperations)
     {
         permissionOperations = new BulkPermissionsLib.ItemMultiTarget[](2);
 
         permissionOperations[0] = BulkPermissionsLib.ItemMultiTarget({
             operation: BulkPermissionsLib.Operation.Revoke,
-            where: getDaoAddress(_deploymentId),
-            who: getPluginAddress(_deploymentId),
+            where: getDaoAddress(_setupId),
+            who: getPluginAddress(_setupId),
             oracle: NO_ORACLE,
             permissionId: keccak256("EXECUTE_PERMISSION")
         });
 
         permissionOperations[1] = BulkPermissionsLib.ItemMultiTarget({
             operation: BulkPermissionsLib.Operation.Revoke,
-            where: getDaoAddress(_deploymentId),
-            who: getPluginAddress(_deploymentId),
+            where: getDaoAddress(_setupId),
+            who: getPluginAddress(_setupId),
             oracle: NO_ORACLE,
             permissionId: counterBase.MULTIPLY_PERMISSION_ID()
         });

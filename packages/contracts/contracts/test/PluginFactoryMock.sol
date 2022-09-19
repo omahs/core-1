@@ -24,7 +24,7 @@ contract PluginManagerMock is PluginManager {
         returns (address plugin)
     {}
 
-    function getInstallPermissionOps(uint256 _deploymentId)
+    function getInstallPermissionOps(uint256 _setupId)
         external
         view
         virtual
@@ -32,7 +32,7 @@ contract PluginManagerMock is PluginManager {
         returns (BulkPermissionsLib.ItemMultiTarget[] memory)
     {}
 
-    function getUninstallPermissionOps(uint256 _deploymentId)
+    function getUninstallPermissionOps(uint256 _setupId)
         external
         view
         virtual

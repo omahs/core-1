@@ -17,13 +17,13 @@ contract PluginInstaller is ReentrancyGuard {
     error WrongInstallingDao(address expected, address actual);
     error PluginNotUpgradable();
 
-    function installPermissions(PluginManager _pluginManager, uint256 _deploymentId)
+    function installPermissions(PluginManager _pluginManager, uint256 _setupId)
         external
-        installingDaoCheck(_pluginManager, _deploymentId)
+        installingDaoCheck(_pluginManager, _setupId)
     {
         _processPermissions(
-            DAO(payable(_pluginManager.getDaoAddress(_deploymentId))),
-            _pluginManager.getInstallPermissionOps(_deploymentId)
+            DAO(payable(_pluginManager.getDaoAddress(_setupId))),
+            _pluginManager.getInstallPermissionOps(_setupId)
         );
 
         //_pluginManager.postInstallHook(); // TODO
@@ -31,34 +31,34 @@ contract PluginInstaller is ReentrancyGuard {
         emit PluginInstalled();
     }
 
-    function updateWithoutUpgrade(PluginManager _pluginManager, uint256 _deploymentId)
+    function updateWithoutUpgrade(PluginManager _pluginManager, uint256 _setupId)
         external
-        installingDaoCheck(_pluginManager, _deploymentId)
+        installingDaoCheck(_pluginManager, _setupId)
     {
         // directly update permissions
-        _updatePermissions(_pluginManager, _deploymentId);
+        _updatePermissions(_pluginManager, _setupId);
     }
 
     function updatePermissionsWithUpgrade(
         PluginManager _oldPluginManager,
-        uint256 _oldDeploymentId,
+        uint256 _oldSetupId,
         PluginManager _newPluginManager,
-        uint256 _newDeploymentId
+        uint256 _newSetupId
     )
         external
-        installingDaoCheck(_oldPluginManager, _oldDeploymentId)
-        installingDaoCheck(_newPluginManager, _newDeploymentId)
+        installingDaoCheck(_oldPluginManager, _oldSetupId)
+        installingDaoCheck(_newPluginManager, _newSetupId)
     {
         // Upgrade the contract
         AragonUpgradablePlugin proxy = AragonUpgradablePlugin(
-            _oldPluginManager.getPluginAddress(_oldDeploymentId)
+            _oldPluginManager.getPluginAddress(_oldSetupId)
         );
 
         // Fetch the implementation address
         address newImplementationAddr = _newPluginManager.getImplementationAddress();
 
         // Get potential initialization data
-        bytes memory initData = _newPluginManager.getInitData(_newDeploymentId);
+        bytes memory initData = _newPluginManager.getInitData(_newSetupId);
 
         // Upgrade the proxy
         if (initData.length > 0) {
@@ -68,13 +68,13 @@ contract PluginInstaller is ReentrancyGuard {
         }
 
         // Update permissions
-        _updatePermissions(_newPluginManager, _newDeploymentId);
+        _updatePermissions(_newPluginManager, _newSetupId);
     }
 
-    function _updatePermissions(PluginManager _pluginManager, uint256 _deploymentId) internal {
+    function _updatePermissions(PluginManager _pluginManager, uint256 _setupId) internal {
         _processPermissions(
-            DAO(payable(_pluginManager.getDaoAddress(_deploymentId))),
-            _pluginManager.getUpdatePermissionOps(_deploymentId)
+            DAO(payable(_pluginManager.getDaoAddress(_setupId))),
+            _pluginManager.getUpdatePermissionOps(_setupId)
         );
 
         //_pluginManager.postUpdateHook(); // TODO
@@ -85,9 +85,9 @@ contract PluginInstaller is ReentrancyGuard {
     function uninstallPermissions(
         DAO _dao,
         PluginManager _pluginManager,
-        uint256 _deploymentId
-    ) external installingDaoCheck(_pluginManager, _deploymentId) {
-        _processPermissions(_dao, _pluginManager.getUninstallPermissionOps(_deploymentId));
+        uint256 _setupId
+    ) external installingDaoCheck(_pluginManager, _setupId) {
+        _processPermissions(_dao, _pluginManager.getUninstallPermissionOps(_setupId));
 
         //_pluginManager.postUninstallHook(); // TODO
 
@@ -101,9 +101,9 @@ contract PluginInstaller is ReentrancyGuard {
         _dao.bulkOnMultiTarget(_permissions);
     }
 
-    modifier installingDaoCheck(PluginManager _pluginManager, uint256 _deploymentId) {
+    modifier installingDaoCheck(PluginManager _pluginManager, uint256 _setupId) {
         address installingDao = msg.sender;
-        address associatedDao = _pluginManager.getDaoAddress(_deploymentId);
+        address associatedDao = _pluginManager.getDaoAddress(_setupId);
 
         if (installingDao != associatedDao) {
             revert WrongInstallingDao({expected: associatedDao, actual: installingDao});
