@@ -3,13 +3,14 @@
 pragma solidity 0.8.10;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "./IPermissionOracle.sol";
 import "./PermissionLib.sol";
 
 /// @title PermissionManager
 /// @author Aragon Association - 2021, 2022
 /// @notice The permission manager used in a DAO and its associated components.
-contract PermissionManager is Initializable {
+contract PermissionManager is Initializable, ContextUpgradeable {
     /// @notice The ID of the permission required to call the `grant`, `grantWithOracle`, `revoke`, `freeze`, and `bulk` function.
     bytes32 public constant ROOT_PERMISSION_ID = keccak256("ROOT_PERMISSION");
 
@@ -269,7 +270,7 @@ contract PermissionManager is Initializable {
         }
         permissionsHashed[permHash] = address(_oracle);
 
-        emit Granted(_permissionId, msg.sender, _who, _where, _oracle);
+        emit Granted(_permissionId, _msgSender(), _who, _where, _oracle);
     }
 
     /// @notice This method is used in the public `revoke` method of the permission manager.
@@ -295,7 +296,7 @@ contract PermissionManager is Initializable {
         }
         permissionsHashed[permHash] = UNSET_FLAG;
 
-        emit Revoked(_permissionId, msg.sender, _who, _where);
+        emit Revoked(_permissionId, _msgSender(), _who, _where);
     }
 
     /// @notice This method is used in the public `freeze` method of the permission manager.
@@ -308,7 +309,7 @@ contract PermissionManager is Initializable {
         }
         frozenPermissionsHashed[frozenPermHash] = true;
 
-        emit Frozen(_permissionId, msg.sender, _where);
+        emit Frozen(_permissionId, _msgSender(), _where);
     }
 
     /// @notice Checks if a caller is granted permissions on a contract via a permission identifier and redirects the approval to an `PermissionOracle` if this was specified in the setup.
@@ -344,14 +345,15 @@ contract PermissionManager is Initializable {
     /// @param _where The address of the target contract for which the permission is required.
     /// @param _permissionId The permission identifier required to call the method this modifier is applied to.
     function _auth(address _where, bytes32 _permissionId) private view {
+        address sender = _msgSender();
         if (
-            !(isGranted(_where, msg.sender, _permissionId, msg.data) ||
-                isGranted(address(this), msg.sender, _permissionId, msg.data))
+            !(isGranted(_where, sender, _permissionId, _msgData()) ||
+                isGranted(address(this), sender, _permissionId, _msgData()))
         )
             revert Unauthorized({
                 here: address(this),
                 where: _where,
-                who: msg.sender,
+                who: sender,
                 permissionId: _permissionId
             });
     }

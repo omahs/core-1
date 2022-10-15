@@ -2,8 +2,10 @@
 
 pragma solidity 0.8.10;
 
+import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import {ERC165Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {ERC2771Recipient} from "@opengsn/contracts/src/ERC2771Recipient.sol";
 
 import {TimeHelpers} from "../../utils/TimeHelpers.sol";
 import {IMajorityVoting} from "./IMajorityVoting.sol";
@@ -19,7 +21,8 @@ abstract contract MajorityVotingBase is
     ERC165Upgradeable,
     IMajorityVoting,
     TimeHelpers,
-    PluginUUPSUpgradeable
+    PluginUUPSUpgradeable,
+    ERC2771Recipient
 {
     /// @notice The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.
     bytes4 internal constant MAJORITY_VOTING_INTERFACE_ID =
@@ -84,6 +87,8 @@ abstract contract MajorityVotingBase is
     ) internal onlyInitializing {
         __PluginUpgradeable_init(_dao);
         
+        _setTrustedForwarder(_trustedForwarder);
+        
         _validateAndSetSettings(_participationRequiredPct, _supportRequiredPct, _minDuration);
 
         emit ConfigUpdated(_participationRequiredPct, _supportRequiredPct, _minDuration);
@@ -100,6 +105,26 @@ abstract contract MajorityVotingBase is
         returns (bool)
     {
         return interfaceId == MAJORITY_VOTING_INTERFACE_ID || super.supportsInterface(interfaceId);
+    }
+
+    /// @notice Overrides '_msgSender()' from 'Component'->'ContextUpgradeable' with that of 'ERC2771Recipient'.
+    function _msgSender()
+        internal
+        view
+        override(ContextUpgradeable, ERC2771Recipient)
+        returns (address)
+    {
+        return ERC2771Recipient._msgSender();
+    }
+
+    /// @notice Overrides '_msgSender()' from 'Component'->'ContextUpgradeable' with that of 'ERC2771Recipient'.
+    function _msgData()
+        internal
+        view
+        override(ContextUpgradeable, ERC2771Recipient)
+        returns (bytes calldata)
+    {
+        return ERC2771Recipient._msgData();
     }
 
     /// @inheritdoc IMajorityVoting

@@ -24,14 +24,6 @@ contract DAOMock is IDAO, PermissionManager {
         return true;
     }
 
-    function getTrustedForwarder() public pure override returns (address) {
-        return address(0);
-    }
-
-    function setTrustedForwarder(
-        address /* _trustedForwarder */
-    ) external override {}
-
     function setMetadata(
         bytes calldata /* _metadata */
     ) external override {}

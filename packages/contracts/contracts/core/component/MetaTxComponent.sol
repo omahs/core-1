@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.10;
 
-import "@opengsn/contracts/src/BaseRelayRecipient.sol";
+import "@opengsn/contracts/src/ERC2771Recipient.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 
 import "./Component.sol";
@@ -10,7 +10,7 @@ import "./Component.sol";
 /// @title MetaTxComponent
 /// @author Aragon Association - 2022
 /// @notice Specialized base component in the Aragon App DAO framework supporting meta transactions.
-abstract contract MetaTxComponent is Component, BaseRelayRecipient {
+abstract contract MetaTxComponent is Component, ERC2771Recipient {
     /// @notice The ID of the permission required to call the `setTrustedForwarder` function.
     bytes32 public constant SET_TRUSTED_FORWARDER_PERMISSION_ID =
         keccak256("SET_TRUSTED_FORWARDER_PERMISSION");
@@ -36,24 +36,24 @@ abstract contract MetaTxComponent is Component, BaseRelayRecipient {
         emit TrustedForwarderSet(_trustedForwarder);
     }
 
-    /// @notice Overrides '_msgSender()' from 'Component'->'ContextUpgradeable' with that of 'BaseRelayRecipient'.
+    /// @notice Overrides '_msgSender()' from 'Component'->'ContextUpgradeable' with that of 'ERC2771Recipient'.
     function _msgSender()
         internal
         view
-        override(ContextUpgradeable, BaseRelayRecipient)
+        override(ContextUpgradeable, ERC2771Recipient)
         returns (address)
     {
-        return BaseRelayRecipient._msgSender();
+        return ERC2771Recipient._msgSender();
     }
 
-    /// @notice Overrides '_msgData()' from 'Component'->'ContextUpgradeable' with that of 'BaseRelayRecipient'.
+    /// @notice Overrides '_msgData()' from 'Component'->'ContextUpgradeable' with that of 'ERC2771Recipient'.
     function _msgData()
         internal
         view
-        override(ContextUpgradeable, BaseRelayRecipient)
+        override(ContextUpgradeable, ERC2771Recipient)
         returns (bytes calldata)
     {
-        return BaseRelayRecipient._msgData();
+        return ERC2771Recipient._msgData();
     }
 
     /// @notice Setter for the trusted forwarder verifying the meta transaction.

@@ -81,17 +81,14 @@ contract DAO is
     /// @dev This method is required to support [ERC-1822](https://eips.ethereum.org/EIPS/eip-1822).
     /// @param _metadata IPFS hash that points to all the metadata (logo, description, tags, etc.) of a DAO.
     /// @param _initialOwner The initial owner of the DAO having the `ROOT_PERMISSION_ID` permission.
-    /// @param _trustedForwarder The trusted forwarder responsible for verifying meta transactions.
     function initialize(
         bytes calldata _metadata,
-        address _initialOwner,
-        address _trustedForwarder
+        address _initialOwner
     ) external initializer {
         _registerInterface(DAO_INTERFACE_ID);
         _registerInterface(type(ERC1271).interfaceId);
 
         _setMetadata(_metadata);
-        _setTrustedForwarder(_trustedForwarder);
         __PermissionManager_init(_initialOwner);
     }
 
@@ -103,20 +100,6 @@ contract DAO is
         override
         auth(address(this), UPGRADE_PERMISSION_ID)
     {}
-
-    /// @inheritdoc IDAO
-    function setTrustedForwarder(address _newTrustedForwarder)
-        external
-        override
-        auth(address(this), SET_TRUSTED_FORWARDER_PERMISSION_ID)
-    {
-        _setTrustedForwarder(_newTrustedForwarder);
-    }
-
-    /// @inheritdoc IDAO
-    function getTrustedForwarder() public view virtual override returns (address) {
-        return trustedForwarder;
-    }
 
     /// @inheritdoc IDAO
     function hasPermission(
@@ -156,7 +139,7 @@ contract DAO is
             execResults[i] = response;
         }
 
-        emit Executed(msg.sender, callId, _actions, execResults);
+        emit Executed(_msgSender(), callId, _actions, execResults);
 
         return execResults;
     }
@@ -176,10 +159,10 @@ contract DAO is
             if (msg.value != 0)
                 revert NativeTokenDepositAmountMismatch({expected: 0, actual: msg.value});
 
-            ERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
+            ERC20(_token).safeTransferFrom(_msgSender(), address(this), _amount);
         }
 
-        emit Deposited(msg.sender, _token, _amount, _reference);
+        emit Deposited(_msgSender(), _token, _amount, _reference);
     }
 
     /// @inheritdoc IDAO
@@ -225,7 +208,7 @@ contract DAO is
     /// @dev This call is bound by the gas limitations for `send`/`transfer` calls introduced by EIP-2929.
     /// Gas cost increases in future hard forks might break this function. As an alternative, EIP-2930-type transactions using access lists can be employed.
     receive() external payable {
-        emit NativeTokenDeposited(msg.sender, msg.value);
+        emit NativeTokenDeposited(_msgSender(), msg.value);
     }
 
     /// @notice Fallback to handle future versions of the [ERC-165](https://eips.ethereum.org/EIPS/eip-165) standard.
@@ -237,14 +220,6 @@ contract DAO is
     /// @param _metadata Hash of the IPFS metadata object.
     function _setMetadata(bytes calldata _metadata) internal {
         emit MetadataSet(_metadata);
-    }
-
-    /// @notice Sets the trusted forwarder on the DAO and emits the associated event.
-    /// @param _trustedForwarder The trusted forwarder address.
-    function _setTrustedForwarder(address _trustedForwarder) internal {
-        trustedForwarder = _trustedForwarder;
-
-        emit TrustedForwarderSet(_trustedForwarder);
     }
 
     /// @inheritdoc IDAO

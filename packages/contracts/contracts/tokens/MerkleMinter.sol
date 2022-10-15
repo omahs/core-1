@@ -10,7 +10,6 @@ import "./IERC20MintableUpgradeable.sol";
 import "./MerkleDistributor.sol";
 
 import {ERC165Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
-
 import {PluginUUPSUpgradeable} from "../core/plugin/PluginUUPSUpgradeable.sol";
 
 /// @title MerkleMinter

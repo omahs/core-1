@@ -112,18 +112,6 @@ abstract contract IDAO {
     /// @param _reference The reference describing the withdrawal reason.
     event Withdrawn(address indexed token, address indexed to, uint256 amount, string _reference);
 
-    /// @notice Setter for the trusted forwarder verifying the meta transaction.
-    /// @param _trustedForwarder The trusted forwarder address.
-    function setTrustedForwarder(address _trustedForwarder) external virtual;
-
-    /// @notice Getter for the trusted forwarder verifying the meta transaction.
-    /// @return The trusted forwarder address.
-    function getTrustedForwarder() external virtual returns (address);
-
-    /// @notice Emitted when a new TrustedForwarder is set on the DAO.
-    /// @param forwarder the new forwarder address.
-    event TrustedForwarderSet(address forwarder);
-
     /// @notice Setter for the [ERC-1271](https://eips.ethereum.org/EIPS/eip-1271) signature validator contract.
     /// @param _signatureValidator The address of the signature validator.
     function setSignatureValidator(address _signatureValidator) external virtual;
