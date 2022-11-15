@@ -51,7 +51,7 @@ export function _handleVoteCreated(
     proposalEntity.endDate = vote.value.value3;
     proposalEntity.snapshotBlock = vote.value.value4;
     proposalEntity.relativeSupportThresholdPct = vote.value.value5;
-    proposalEntity.totalSupportThresholdPct = vote.value.value6;
+    proposalEntity.participationThresholdPct = vote.value.value6;
     proposalEntity.census = vote.value.value7;
 
     // actions
@@ -147,7 +147,7 @@ export function handleVoteCast(event: VoteCast): void {
       // set the executable param
       proposalEntity.executable =
         currentParticipation.ge(
-          proposalEntity.totalSupportThresholdPct.div(
+          proposalEntity.participationThresholdPct.div(
             BigInt.fromString(TEN_POWER_16)
           )
         ) &&
@@ -197,8 +197,8 @@ export function handleConfigUpdated(event: ConfigUpdated): void {
   if (packageEntity) {
     packageEntity.relativeSupportThresholdPct =
       event.params.relativeSupportThresholdPct;
-    packageEntity.totalSupportThresholdPct =
-      event.params.totalSupportThresholdPct;
+    packageEntity.participationThresholdPct =
+      event.params.participationThresholdPct;
     packageEntity.minDuration = event.params.minDuration;
     packageEntity.save();
   }

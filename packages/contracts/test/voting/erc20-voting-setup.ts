@@ -34,7 +34,7 @@ const MINIMUM_DATA = abiCoder.encode(prepareInstallDataTypes, [
   [[], []],
 ]);
 
-const totalSupportThresholdPct = 1;
+const participationThresholdPct = 1;
 const relativeSupportThresholdPct = 2;
 const minDuration = 3;
 const tokenName = 'name';
@@ -80,7 +80,7 @@ describe('ERC20VotingSetup', function () {
 
     const iface = new ethers.utils.Interface([
       'function getVotingToken() returns (address)',
-      'function initialize(address _dao, uint64 _totalSupportThresholdPct, uint64 _relativeSupportThresholdPct, uint64 _minDuration, address _token)',
+      'function initialize(address _dao, uint64 _participationThresholdPct, uint64 _relativeSupportThresholdPct, uint64 _minDuration, address _token)',
     ]);
 
     expect(
@@ -92,7 +92,7 @@ describe('ERC20VotingSetup', function () {
     it('correctly returns prepare installation data abi', async () => {
       // Human-Readable Abi of data param of `prepareInstallation`.
       const dataHRABI =
-        '(uint64 totalSupportThresholdPct, uint64 relativeSupportThresholdPct, uint64 minDuration, tuple(address addr, string name, string symbol) tokenSettings, tuple(address[] receivers, uint256[] amounts) mintSettings)';
+        '(uint64 participationThresholdPct, uint64 relativeSupportThresholdPct, uint64 minDuration, tuple(address addr, string name, string symbol) tokenSettings, tuple(address[] receivers, uint256[] amounts) mintSettings)';
 
       expect(await erc20VotingSetup.prepareInstallationDataABI()).to.be.eq(
         dataHRABI
@@ -376,7 +376,7 @@ describe('ERC20VotingSetup', function () {
       const daoAddress = targetDao.address;
 
       const data = abiCoder.encode(prepareInstallDataTypes, [
-        totalSupportThresholdPct,
+        participationThresholdPct,
         relativeSupportThresholdPct,
         minDuration,
         [AddressZero, tokenName, tokenSymbol],
@@ -404,8 +404,8 @@ describe('ERC20VotingSetup', function () {
       );
 
       expect(await erc20VotingContract.getDAO()).to.be.equal(daoAddress);
-      expect(await erc20VotingContract.totalSupportThresholdPct()).to.be.equal(
-        totalSupportThresholdPct
+      expect(await erc20VotingContract.participationThresholdPct()).to.be.equal(
+        participationThresholdPct
       );
       expect(
         await erc20VotingContract.relativeSupportThresholdPct()

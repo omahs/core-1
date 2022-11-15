@@ -23,7 +23,7 @@ interface IMajorityVoting {
         uint64 endDate;
         uint64 snapshotBlock;
         uint64 relativeSupportThresholdPct; // `N_yes/ N_total * 100`
-        uint64 totalSupportThresholdPct; // previously: quorum = totalSupportThresholdPct
+        uint64 participationThresholdPct; // previously: quorum = participationThresholdPct
         uint256 yes;
         uint256 no;
         uint256 abstain;
@@ -52,21 +52,21 @@ interface IMajorityVoting {
 
     /// @notice Emitted when the vote configuration is updated.
     /// @param relativeSupportThresholdPct The relative support threshold in percent.
-    /// @param totalSupportThresholdPct The total support threshold in percent.
+    /// @param participationThresholdPct The total support threshold in percent.
     /// @param minDuration The minimal duration of a vote.
     event ConfigUpdated(
-        uint64 totalSupportThresholdPct,
+        uint64 participationThresholdPct,
         uint64 relativeSupportThresholdPct,
         uint64 minDuration
     );
 
     /// @notice Sets the vote configuration.
-    /// @param _totalSupportThresholdPct The total support threshold in percent.
+    /// @param _participationThresholdPct The total support threshold in percent.
     /// @param _relativeSupportThresholdPct The relative support threshold in percent.
     /// @param _minDuration The minimal duration of a vote.
     function setConfiguration(
         uint64 _relativeSupportThresholdPct,
-        uint64 _totalSupportThresholdPct,
+        uint64 _participationThresholdPct,
         uint64 _minDuration
     ) external;
 
@@ -130,7 +130,7 @@ interface IMajorityVoting {
     /// @return endDate The end date of the vote.
     /// @return snapshotBlock The block number of the snapshot taken for this vote.
     /// @return relativeSupportThresholdPct The relative support threshold in percent.
-    /// @return totalSupportThresholdPct The total support threshold in percent.
+    /// @return participationThresholdPct The total support threshold in percent.
     /// @return census The total number of eligible votes that can be casted.
     /// @return yes The number of `yes` votes.
     /// @return no The number of `no` votes.
@@ -146,7 +146,7 @@ interface IMajorityVoting {
             uint64 endDate,
             uint64 snapshotBlock,
             uint64 relativeSupportThresholdPct,
-            uint64 totalSupportThresholdPct,
+            uint64 participationThresholdPct,
             uint256 census,
             uint256 yes,
             uint256 no,

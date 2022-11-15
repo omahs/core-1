@@ -144,7 +144,7 @@ type ERC20VotingPackage implements Package @entity {
   daos: [DaoPackage!] @derivedFrom(field: "pkg")
   proposals: [ERC20VotingProposal!]! @derivedFrom(field: "pkg")
   relativeSupportThresholdPct: BigInt
-  totalSupportThresholdPct: BigInt
+  participationThresholdPct: BigInt
   minDuration: BigInt
   votesLength: BigInt
   token: ERC20Token
@@ -181,7 +181,7 @@ type ERC20VotingProposal implements Proposal @entity {
   endDate: BigInt!
   snapshotBlock: BigInt!
   relativeSupportThresholdPct: BigInt!
-  totalSupportThresholdPct: BigInt!
+  participationThresholdPct: BigInt!
   yes: BigInt
   no: BigInt
   abstain: BigInt
@@ -201,7 +201,7 @@ type AllowlistPackage implements Package @entity {
   daos: [DaoPackage!] @derivedFrom(field: "pkg")
   proposals: [AllowlistProposal!]! @derivedFrom(field: "pkg")
   relativeSupportThresholdPct: BigInt
-  totalSupportThresholdPct: BigInt
+  participationThresholdPct: BigInt
   minDuration: BigInt
   votesLength: BigInt
   members: [AllowlistVoter!]! @derivedFrom(field: "pkg")
@@ -236,7 +236,7 @@ type AllowlistProposal implements Proposal @entity {
   endDate: BigInt!
   snapshotBlock: BigInt!
   relativeSupportThresholdPct: BigInt!
-  totalSupportThresholdPct: BigInt!
+  participationThresholdPct: BigInt!
   census: BigInt!
   yes: BigInt
   no: BigInt

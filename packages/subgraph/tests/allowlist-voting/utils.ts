@@ -120,7 +120,7 @@ export function createNewVoteExecutedEvent(
 }
 
 export function createNewConfigUpdatedEvent(
-  totalSupportThresholdPct: string,
+  participationThresholdPct: string,
   relativeSupportThresholdPct: string,
   minDuration: string,
   contractAddress: string
@@ -130,9 +130,11 @@ export function createNewConfigUpdatedEvent(
   newConfigUpdatedEvent.address = Address.fromString(contractAddress);
   newConfigUpdatedEvent.parameters = [];
 
-  let totalSupportThresholdPctParam = new ethereum.EventParam(
-    'totalSupportThresholdPct',
-    ethereum.Value.fromSignedBigInt(BigInt.fromString(totalSupportThresholdPct))
+  let participationThresholdPctParam = new ethereum.EventParam(
+    'participationThresholdPct',
+    ethereum.Value.fromSignedBigInt(
+      BigInt.fromString(participationThresholdPct)
+    )
   );
   let relativeSupportThresholdPctParam = new ethereum.EventParam(
     'relativeSupportThresholdPct',
@@ -145,7 +147,7 @@ export function createNewConfigUpdatedEvent(
     ethereum.Value.fromSignedBigInt(BigInt.fromString(minDuration))
   );
 
-  newConfigUpdatedEvent.parameters.push(totalSupportThresholdPctParam);
+  newConfigUpdatedEvent.parameters.push(participationThresholdPctParam);
   newConfigUpdatedEvent.parameters.push(relativeSupportThresholdPctParam);
   newConfigUpdatedEvent.parameters.push(minDurationParam);
 
@@ -217,7 +219,7 @@ export function createAllowlistProposalEntityState(
   endDate: string = END_DATE,
   snapshotBlock: string = SNAPSHOT_BLOCK,
   relativeSupportThresholdPct: string = MIN_SUPPORT,
-  totalSupportThresholdPct: string = MIN_TURNOUT,
+  participationThresholdPct: string = MIN_TURNOUT,
   census: string = VOTING_POWER,
   createdAt: string = CREATED_AT,
   open: boolean = true,
@@ -236,8 +238,8 @@ export function createAllowlistProposalEntityState(
   allowlistProposal.relativeSupportThresholdPct = BigInt.fromString(
     relativeSupportThresholdPct
   );
-  allowlistProposal.totalSupportThresholdPct = BigInt.fromString(
-    totalSupportThresholdPct
+  allowlistProposal.participationThresholdPct = BigInt.fromString(
+    participationThresholdPct
   );
   allowlistProposal.census = BigInt.fromString(census);
   allowlistProposal.open = open;

@@ -76,14 +76,14 @@ describe('ERC20Voting', function () {
   });
 
   function initializeVoting(
-    _totalSupportThresholdPct: any,
+    _participationThresholdPct: any,
     _relativeSupportThresholdPct: any,
     minDuration: any
   ) {
     return voting.initialize(
       dao.address,
 
-      _totalSupportThresholdPct,
+      _participationThresholdPct,
       _relativeSupportThresholdPct,
       minDuration,
       erc20VoteMock.address
@@ -109,7 +109,7 @@ describe('ERC20Voting', function () {
   describe('Vote creation', async () => {
     let minDuration = 500;
     let relativeSupportThresholdPct = pct16(50);
-    let totalSupportThresholdPct = pct16(20);
+    let participationThresholdPct = pct16(20);
     let census = 100;
     const id = 0; // voteId
 
@@ -177,7 +177,7 @@ describe('ERC20Voting', function () {
       expect(vote.open).to.equal(true);
       expect(vote.executed).to.equal(false);
       expect(vote._relativeSupportThresholdPct).to.equal(2);
-      expect(vote._totalSupportThresholdPct).to.equal(1);
+      expect(vote._participationThresholdPct).to.equal(1);
       expect(vote.snapshotBlock).to.equal(block.number - 1);
       expect(vote.census).to.equal(1);
       expect(vote.yes).to.equal(0);
@@ -222,7 +222,7 @@ describe('ERC20Voting', function () {
       expect(vote.open).to.equal(true);
       expect(vote.executed).to.equal(false);
       expect(vote._relativeSupportThresholdPct).to.equal(2);
-      expect(vote._totalSupportThresholdPct).to.equal(1);
+      expect(vote._participationThresholdPct).to.equal(1);
       expect(vote.snapshotBlock).to.equal(block.number - 1);
       expect(vote.census).to.equal(1);
       expect(vote.yes).to.equal(1);
@@ -236,7 +236,7 @@ describe('ERC20Voting', function () {
       let endDate = startDate + minDuration;
 
       await initializeVoting(
-        totalSupportThresholdPct,
+        participationThresholdPct,
         relativeSupportThresholdPct,
         minDuration
       );
@@ -279,7 +279,7 @@ describe('ERC20Voting', function () {
   describe('Vote + Execute:', async () => {
     let minDuration = 500;
     let relativeSupportThresholdPct = pct16(50);
-    let totalSupportThresholdPct = pct16(20);
+    let participationThresholdPct = pct16(20);
     let census = 100;
     const id = 0; // voteId
     const startOffset = 9;
@@ -291,7 +291,7 @@ describe('ERC20Voting', function () {
       endDate = startDate + minDuration;
 
       await initializeVoting(
-        totalSupportThresholdPct,
+        participationThresholdPct,
         relativeSupportThresholdPct,
         minDuration
       );
@@ -507,12 +507,12 @@ describe('ERC20Voting', function () {
     describe('A simple majority vote with >50% relative support and >25% total support required', async () => {
       let minDuration = 500;
       let relativeSupportThresholdPct = pct16(50);
-      let totalSupportThresholdPct = pct16(25);
+      let participationThresholdPct = pct16(25);
       let census = 100;
 
       beforeEach(async () => {
         await initializeVoting(
-          totalSupportThresholdPct,
+          participationThresholdPct,
           relativeSupportThresholdPct,
           minDuration
         );

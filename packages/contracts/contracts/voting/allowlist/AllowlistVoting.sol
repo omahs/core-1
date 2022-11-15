@@ -49,20 +49,20 @@ contract AllowlistVoting is MajorityVotingBase {
     /// @notice Initializes the component.
     /// @dev This method is required to support [ERC-1822](https://eips.ethereum.org/EIPS/eip-1822).
     /// @param _dao The IDAO interface of the associated DAO.
-    /// @param _totalSupportThresholdPct The total support threshold in percent.
+    /// @param _participationThresholdPct The total support threshold in percent.
     /// @param _relativeSupportThresholdPct The relative support threshold in percent.
     /// @param _minDuration The minimal duration of a vote.
     /// @param _allowed The allowed addresses.
     function initialize(
         IDAO _dao,
-        uint64 _totalSupportThresholdPct,
+        uint64 _participationThresholdPct,
         uint64 _relativeSupportThresholdPct,
         uint64 _minDuration,
         address[] calldata _allowed
     ) public initializer {
         __MajorityVotingBase_init(
             _dao,
-            _totalSupportThresholdPct,
+            _participationThresholdPct,
             _relativeSupportThresholdPct,
             _minDuration
         );
@@ -143,7 +143,7 @@ contract AllowlistVoting is MajorityVotingBase {
         vote_.endDate = _endDate;
         vote_.snapshotBlock = snapshotBlock;
         vote_.relativeSupportThresholdPct = relativeSupportThresholdPct;
-        vote_.totalSupportThresholdPct = totalSupportThresholdPct;
+        vote_.participationThresholdPct = participationThresholdPct;
         vote_.census = allowedUserCount(snapshotBlock);
 
         unchecked {

@@ -38,7 +38,7 @@ let startDate = '1644851000';
 let endDate = '1644852000';
 let snapshotBlock = '100';
 let relativeSupportThresholdPct = '1000';
-let totalSupportThresholdPct = '500';
+let participationThresholdPct = '500';
 let census = '1000';
 let actions = createDummyActions(DAO_TOKEN_ADDRESS, '0', '0x00000000');
 
@@ -60,7 +60,7 @@ test('Run ERC Voting (handleVoteCreated) mappings with mock event', () => {
     endDate,
     snapshotBlock,
     relativeSupportThresholdPct,
-    totalSupportThresholdPct,
+    participationThresholdPct,
     census,
     '0',
     '0',
@@ -114,8 +114,8 @@ test('Run ERC Voting (handleVoteCreated) mappings with mock event', () => {
   assert.fieldEquals(
     'ERC20VotingProposal',
     entityID,
-    'totalSupportThresholdPct',
-    totalSupportThresholdPct
+    'participationThresholdPct',
+    participationThresholdPct
   );
   assert.fieldEquals('ERC20VotingProposal', entityID, 'census', census);
   assert.fieldEquals('ERC20VotingProposal', entityID, 'executed', 'false');
@@ -257,7 +257,7 @@ test('Run ERC Voting (handleVoteExecuted) mappings with mock event', () => {
     endDate,
     snapshotBlock,
     relativeSupportThresholdPct,
-    totalSupportThresholdPct,
+    participationThresholdPct,
     census,
     '1',
     '0',
@@ -301,7 +301,7 @@ test('Run ERC Voting (handleConfigUpdated) mappings with mock event', () => {
   assert.fieldEquals(
     'ERC20VotingPackage',
     entityID,
-    'totalSupportThresholdPct',
+    'participationThresholdPct',
     '2'
   );
   assert.fieldEquals('ERC20VotingPackage', entityID, 'minDuration', '3600');
