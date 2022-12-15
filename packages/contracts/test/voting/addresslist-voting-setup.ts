@@ -6,10 +6,15 @@ import {AddresslistVotingSetup} from '../../typechain';
 import {deployNewDAO} from '../test-utils/dao';
 import {getInterfaceID} from '../test-utils/interfaces';
 import {Operation} from '../core/permission/permission-manager';
-import {PluginSettings, VoteMode, pct16, ONE_HOUR} from '../test-utils/voting';
+import {
+  MajorityVotingSettings,
+  VoteMode,
+  pct16,
+  ONE_HOUR,
+} from '../test-utils/voting';
 
 let defaultData: any;
-let defaultPluginSettings: PluginSettings;
+let defaultMajorityVotingSettings: MajorityVotingSettings;
 let defaultMembers: string[];
 
 const abiCoder = ethers.utils.defaultAbiCoder;
@@ -41,7 +46,7 @@ describe('AddresslistVotingSetup', function () {
     signers = await ethers.getSigners();
     targetDao = await deployNewDAO(signers[0].address);
 
-    defaultPluginSettings = {
+    defaultMajorityVotingSettings = {
       voteMode: VoteMode.EarlyExecution,
       supportThreshold: pct16(50),
       minParticipation: pct16(20),
@@ -59,7 +64,7 @@ describe('AddresslistVotingSetup', function () {
       await addresslistVotingSetup.getImplementationAddress();
 
     defaultData = abiCoder.encode(prepareInstallationDataTypes, [
-      Object.values(defaultPluginSettings),
+      Object.values(defaultMajorityVotingSettings),
       defaultMembers,
     ]);
   });
@@ -85,7 +90,7 @@ describe('AddresslistVotingSetup', function () {
     it('correctly returns prepare installation data abi', async () => {
       // Human-Readable Abi of data param of `prepareInstallation`.
       const dataHRABI =
-        '(tuple(uint8 voteMode, uint64 supportThreshold, uint64 minParticipation, uint64minDuration, uint256 minProposerVotingPower) pluginSettings, address[] members)';
+        '(tuple(uint8 voteMode, uint64 supportThreshold, uint64 minParticipation, uint64minDuration, uint256 minProposerVotingPower) majorityVotingSettings, address[] members)';
 
       expect(
         await addresslistVotingSetup.prepareInstallationDataABI()
@@ -189,17 +194,17 @@ describe('AddresslistVotingSetup', function () {
         targetDao.address
       );
       expect(await addresslistVotingContract.minParticipation()).to.be.equal(
-        defaultPluginSettings.minParticipation
+        defaultMajorityVotingSettings.minParticipation
       );
       expect(await addresslistVotingContract.supportThreshold()).to.be.equal(
-        defaultPluginSettings.supportThreshold
+        defaultMajorityVotingSettings.supportThreshold
       );
       expect(await addresslistVotingContract.minDuration()).to.be.equal(
-        defaultPluginSettings.minDuration
+        defaultMajorityVotingSettings.minDuration
       );
       expect(
         await addresslistVotingContract.minProposerVotingPower()
-      ).to.be.equal(defaultPluginSettings.minProposerVotingPower);
+      ).to.be.equal(defaultMajorityVotingSettings.minProposerVotingPower);
 
       await ethers.provider.send('evm_mine', []);
 
