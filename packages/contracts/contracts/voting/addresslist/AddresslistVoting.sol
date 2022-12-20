@@ -64,6 +64,11 @@ contract AddresslistVoting is Addresslist, MajorityVotingBase {
             super.supportsInterface(_interfaceId);
     }
 
+    /// @inheritdoc IMajorityVoting
+    function totalVotingPower(uint256 _proposalId) public view virtual override returns (uint256) {
+        return addresslistLength(proposals[_proposalId].parameters.snapshotBlock);
+    }
+
     /// @notice Adds new members to the address list.
     /// @param _members The addresses of members to be added.
     /// @dev This functin is used during the plugin initialization.
@@ -115,8 +120,6 @@ contract AddresslistVoting is Addresslist, MajorityVotingBase {
         proposal_.parameters.votingMode = votingMode();
         proposal_.parameters.supportThreshold = supportThreshold();
         proposal_.parameters.minParticipation = minParticipation();
-
-        proposal_.tally.totalVotingPower = addresslistLength(snapshotBlock);
 
         unchecked {
             for (uint256 i = 0; i < _actions.length; i++) {

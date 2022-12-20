@@ -27,14 +27,14 @@ contract Multisig is
     /// @notice A container for proposal-related information.
     /// @param executed Wheter the proposal is executed or not.
     /// @param parameters The proposal-specific approve settings at the time of the proposal creation.
-    /// @param tally The approve tally of the proposal.
+    /// @param approvals The number of approvals casted.
     /// @param approvers The approves casted by the approvers.
     /// @param actions The actions to be executed when the proposal passes.
     struct Proposal {
         bool open;
         bool executed;
         ProposalParameters parameters;
-        Tally tally;
+        uint256 approvals;
         mapping(address => bool) approvers;
         IDAO.Action[] actions;
     }
@@ -45,14 +45,6 @@ contract Multisig is
     struct ProposalParameters {
         uint256 minApprovals;
         uint64 snapshotBlock;
-    }
-
-    /// @notice A container for the proposal tally.
-    /// @param approvals The number of approvals casted.
-    /// @param addresslistLength The length of the .
-    struct Tally {
-        uint256 approvals;
-        uint256 addresslistLength;
     }
 
     /// @notice The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.
@@ -151,7 +143,7 @@ contract Multisig is
     /// @param _proposalId The ID of the proposal.
     /// @return The number of approvals.
     function approvals(uint256 _proposalId) public view returns (uint256) {
-        return proposals[_proposalId].tally.approvals;
+        return proposals[_proposalId].approvals;
     }
 
     /// @notice Updates the minimal approval parameter.
@@ -221,7 +213,6 @@ contract Multisig is
         proposal_.open = true;
         proposal_.parameters.snapshotBlock = snapshotBlock;
         proposal_.parameters.minApprovals = minApprovals_;
-        proposal_.tally.addresslistLength = addresslistLength(snapshotBlock); // TODO redundant?
 
         unchecked {
             for (uint256 i = 0; i < _actions.length; i++) {
@@ -269,7 +260,7 @@ contract Multisig is
     /// @return open Wheter the proposal is open or not.
     /// @return executed Wheter the proposal is executed or not.
     /// @return parameters The parameters of the proposal vote.
-    /// @return tally The current tally of the proposal vote.
+    /// @return approvals_ The current number of approvals of the proposal vote.
     /// @return actions The actions to be executed in the associated DAO after the proposal has passed.
     function getProposal(uint256 _proposalId)
         external
@@ -278,7 +269,7 @@ contract Multisig is
             bool open,
             bool executed,
             ProposalParameters memory parameters,
-            Tally memory tally,
+            uint256 approvals_,
             IDAO.Action[] memory actions
         )
     {
@@ -287,7 +278,7 @@ contract Multisig is
         open = proposal_.open;
         executed = proposal_.executed;
         parameters = proposal_.parameters;
-        tally = proposal_.tally;
+        approvals_ = proposal_.approvals;
         actions = proposal_.actions;
     }
 
@@ -319,7 +310,7 @@ contract Multisig is
     ) internal {
         Proposal storage proposal_ = proposals[_proposalId];
 
-        proposal_.tally.approvals += 1;
+        proposal_.approvals += 1;
         proposal_.approvers[_approver] = true;
 
         emit Approved({proposalId: _proposalId, approver: _approver});
@@ -386,7 +377,7 @@ contract Multisig is
             return false;
         }
 
-        return proposal_.tally.approvals >= proposal_.parameters.minApprovals;
+        return proposal_.approvals >= proposal_.parameters.minApprovals;
     }
 
     /// @notice Internal function to check if a proposal vote is still open.

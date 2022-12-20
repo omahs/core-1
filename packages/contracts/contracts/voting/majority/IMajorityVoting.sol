@@ -90,6 +90,11 @@ interface IMajorityVoting {
     /// @return The participation value.
     function participation(uint256 _proposalId) external view returns (uint256);
 
+    /// @notice Returns the total voting power $${{N_\text{total}}$$ defined for a proposal vote.
+    /// @param _proposalId The ID of the proposal.
+    /// @return The total voting power value.
+    function totalVotingPower(uint256 _proposalId) external view returns (uint256);
+
     /// @notice Checks if an account can participate on a proposal vote. This can be because the vote
     /// - has not started,
     /// - has ended,

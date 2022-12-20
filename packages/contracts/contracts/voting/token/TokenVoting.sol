@@ -48,6 +48,11 @@ contract TokenVoting is MajorityVotingBase {
         return _interfaceId == TOKEN_VOTING_INTERFACE_ID || super.supportsInterface(_interfaceId);
     }
 
+    /// @inheritdoc IMajorityVoting
+    function totalVotingPower(uint256 _proposalId) public view virtual override returns (uint256) {
+        return votingToken.getPastTotalSupply(proposals[_proposalId].parameters.snapshotBlock);
+    }
+
     /// @notice getter function for the voting token.
     /// @dev public function also useful for registering interfaceId and for distinguishing from majority voting interface.
     /// @return IVotesUpgradeable the token used for voting.
@@ -66,9 +71,9 @@ contract TokenVoting is MajorityVotingBase {
     ) external override returns (uint256 id) {
         uint64 snapshotBlock = getBlockNumber64() - 1;
 
-        uint256 totalVotingPower = votingToken.getPastTotalSupply(snapshotBlock);
-        if (totalVotingPower == 0) revert NoVotingPower();
-
+        if (votingToken.getPastTotalSupply(snapshotBlock) == 0) {
+            revert NoVotingPower();
+        }
         if (votingToken.getPastVotes(_msgSender(), snapshotBlock) < minProposerVotingPower()) {
             revert ProposalCreationForbidden(_msgSender());
         }
@@ -86,8 +91,6 @@ contract TokenVoting is MajorityVotingBase {
         proposal_.parameters.votingMode = votingMode();
         proposal_.parameters.supportThreshold = supportThreshold();
         proposal_.parameters.minParticipation = minParticipation();
-
-        proposal_.tally.totalVotingPower = totalVotingPower;
 
         unchecked {
             for (uint256 i = 0; i < _actions.length; i++) {
