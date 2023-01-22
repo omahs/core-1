@@ -10,6 +10,11 @@ import {
 import {deployWithProxy} from './proxy';
 import {getMergedABI} from '../../utils/abi';
 
+export type VersionTag = {
+  release: number;
+  build: number;
+}
+
 export async function deployMockPluginSetup(): Promise<PluginUUPSUpgradeableSetupV1Mock> {
   const PluginSetupMock = await ethers.getContractFactory(
     'PluginUUPSUpgradeableSetupV1Mock'

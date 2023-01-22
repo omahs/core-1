@@ -22,7 +22,10 @@ contract PluginUUPSUpgradeableSetupV1Mock is PluginSetup {
     }
 
     /// @inheritdoc IPluginSetup
-    function prepareInstallation(address _dao, bytes memory)
+    function prepareInstallation(
+        address _dao,
+        bytes memory
+    )
         public
         virtual
         override
@@ -30,7 +33,7 @@ contract PluginUUPSUpgradeableSetupV1Mock is PluginSetup {
     {
         plugin = mockPluginProxy(pluginBase, _dao);
         preparedDependency.helpers = mockHelpers(1);
-        preparedDependency.permissions = mockPermissions(0, 1, PermissionLib.Operation.Grant);
+        preparedDependency.permissions = mockPermissions(0, 2, PermissionLib.Operation.Grant);
     }
 
     /// @inheritdoc IPluginSetup
@@ -39,12 +42,10 @@ contract PluginUUPSUpgradeableSetupV1Mock is PluginSetup {
     }
 
     /// @inheritdoc IPluginSetup
-    function prepareUninstallation(address _dao, SetupPayload calldata _payload)
-        external
-        virtual
-        override
-        returns (PermissionLib.MultiTargetPermission[] memory permissions)
-    {
+    function prepareUninstallation(
+        address _dao,
+        SetupPayload calldata _payload
+    ) external virtual override returns (PermissionLib.MultiTargetPermission[] memory permissions) {
         (_dao, _payload);
         permissions = mockPermissions(0, 1, PermissionLib.Operation.Revoke);
     }
@@ -56,16 +57,31 @@ contract PluginUUPSUpgradeableSetupV1Mock is PluginSetup {
 }
 
 contract PluginUUPSUpgradeableSetupV1MockBad is PluginUUPSUpgradeableSetupV1Mock {
-    function prepareInstallation(address _dao, bytes memory)
-        public
-        pure
-        override
-        returns (address plugin, PreparedDependency memory preparedDependency)
-    {
+    
+    // By default, this plugin setup always returns the 1 helper and 1 permission
+    // every time unless you call setHelpersAndPermissions.
+    uint160 public helpersMockAmount = 1;
+    uint160 public permissionsMockAmount = 1;
+
+    // Required to allow the feature where calling prepareInstallation 2 times would
+    // return different helpers/permissions !
+    // IMPORTANT: if your test calls this, note that it will be reflected on other tests 
+    // once they call prepareInstallation as it will start returning the updated records, not the default one.
+    // As a general recommendation, it's recomended to call `setHelpersAndPermissions` with the default(1,1)
+    // once your test is finished.
+    function setHelpersAndPermissions(uint160 helpersAmount, uint160 permissionsAmount) public {
+        helpersMockAmount = helpersAmount;
+        permissionsMockAmount = permissionsAmount;
+    }
+
+    function prepareInstallation(
+        address _dao,
+        bytes memory
+    ) public view override returns (address plugin, PreparedDependency memory preparedDependency) {
         (_dao);
         plugin = address(0); // The bad behaviour is returning the same address over and over again
-        preparedDependency.helpers = mockHelpers(1);
-        preparedDependency.permissions = mockPermissions(0, 1, PermissionLib.Operation.Grant);
+        preparedDependency.helpers = mockHelpers(helpersMockAmount);
+        preparedDependency.permissions = mockPermissions(0, permissionsMockAmount, PermissionLib.Operation.Grant);
     }
 }
 
@@ -75,7 +91,10 @@ contract PluginUUPSUpgradeableSetupV2Mock is PluginUUPSUpgradeableSetupV1Mock {
     }
 
     /// @inheritdoc IPluginSetup
-    function prepareInstallation(address _dao, bytes memory)
+    function prepareInstallation(
+        address _dao,
+        bytes memory
+    )
         public
         virtual
         override
@@ -116,7 +135,10 @@ contract PluginUUPSUpgradeableSetupV3Mock is PluginUUPSUpgradeableSetupV2Mock {
     }
 
     /// @inheritdoc IPluginSetup
-    function prepareInstallation(address _dao, bytes memory)
+    function prepareInstallation(
+        address _dao,
+        bytes memory
+    )
         public
         virtual
         override
@@ -172,7 +194,10 @@ contract PluginUUPSUpgradeableSetupV4Mock is PluginUUPSUpgradeableSetupV3Mock {
     }
 
     /// @inheritdoc IPluginSetup
-    function prepareInstallation(address _dao, bytes memory)
+    function prepareInstallation(
+        address _dao,
+        bytes memory
+    )
         public
         virtual
         override

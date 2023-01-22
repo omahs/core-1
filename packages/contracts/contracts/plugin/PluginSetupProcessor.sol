@@ -107,7 +107,7 @@ contract PluginSetupProcessor is DaoAuthorizable {
         IPluginSetup.SetupPayload setupPayload;
         bytes32 permissionsHash;
     }
-
+    
     /// @notice The struct containing the parameters for the `applyInstallation` function.
     /// @param plugin The address of the plugin which is uninstalling.
     /// @param pluginSetupRef The PluginSetupRepo address + the current version of the plugin at which time it's getting uninstalled.
@@ -309,6 +309,9 @@ contract PluginSetupProcessor is DaoAuthorizable {
         // Only allow to prepare if setupId has not been prepared before.
         // NOTE that if plugin was uninstalled, the same setupId can still
         // be prepared as blockNumber would end up being higher than setupId's blockNumber.
+        // This case applies to stateful plugins which means pluginSetup always returns the same plugin address.
+        // Though, the same setupId still would need to be prepared (see validateSetupId in `applyInstallation`) first 
+        // to make sure prepare event is thrown again.
         if (pluginState.blockNumber < pluginState.setupIds[setupId]) {
             revert SetupAlreadyPrepared(setupId);
         }
