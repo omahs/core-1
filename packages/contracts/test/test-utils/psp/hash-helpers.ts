@@ -4,6 +4,13 @@ import {keccak256} from 'ethers/utils';
 
 import {PermissionOperation, PluginRepoPointer, PreparationType} from './types';
 
+const ZERO_BYTES_HASH = keccak256(
+  defaultAbiCoder.encode(
+    ['bytes32'],
+    ['0x0000000000000000000000000000000000000000000000000000000000000000']
+  )
+);
+
 export function hashHelpers(helpers: string[]) {
   return keccak256(defaultAbiCoder.encode(['address[]'], [helpers]));
 }
@@ -25,8 +32,8 @@ export function getPluginInstallationId(dao: string, plugin: string) {
 
 export function getSetupId(
   pluginRepoPointer: PluginRepoPointer,
-  helpers: string[],
-  permissions: PermissionOperation[],
+  helpers: string[] | null,
+  permissions: PermissionOperation[] | null,
   data: BytesLike,
   preparationType: PreparationType
 ) {
@@ -43,8 +50,8 @@ export function getSetupId(
       [
         [pluginRepoPointer[1], pluginRepoPointer[2]],
         pluginRepoPointer[0],
-        hashPermissions(permissions),
-        hashHelpers(helpers),
+        permissions !== null ? hashPermissions(permissions) : ZERO_BYTES_HASH,
+        helpers !== null ? hashHelpers(helpers) : ZERO_BYTES_HASH,
         keccak256(data),
         preparationType,
       ]

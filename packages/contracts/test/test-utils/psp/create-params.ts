@@ -41,7 +41,6 @@ export function createApplyInstallationParams(
 export function createPrepareUninstallationParams(
   plugin: string,
   pluginRepoPointer: PluginRepoPointer,
-  permissions: PermissionOperation[],
   helpers: string[],
   data: BytesLike
 ) {
@@ -57,8 +56,7 @@ export function createPrepareUninstallationParams(
       plugin: plugin,
       currentHelpers: helpers,
       data: data,
-    },
-    permissionsHash: hashPermissions(permissions),
+    }
   };
 }
 

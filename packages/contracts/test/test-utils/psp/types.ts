@@ -1,7 +1,17 @@
 import {Operation} from '../../core/permission/permission-manager';
 import {BytesLike, utils, constants} from 'ethers';
-import {PluginSetupProcessor, PluginRepoRegistry, PluginSetupProcessor__factory} from '../../../typechain';
-
+import {
+  DAO,
+  PluginSetupProcessor,
+  PluginRepoRegistry,
+  PluginUUPSUpgradeableSetupV1Mock,
+  PluginUUPSUpgradeableSetupV1MockBad,
+  PluginUUPSUpgradeableSetupV2Mock,
+  PluginUUPSUpgradeableSetupV3Mock,
+  PluginUUPSUpgradeableSetupV4Mock,
+  PluginCloneableSetupV1Mock,
+  PluginCloneableSetupV2Mock,
+} from '../../../typechain';
 export type PermissionOperation = {
   operation: Operation;
   where: string;
@@ -17,17 +27,6 @@ export enum PreparationType {
   Uninstall,
 }
 
-export type PreparedInstallEvent = {
-  sender: string;
-  dao: string;
-  setupId: BytesLike;
-  pluginSetupRepo: string;
-  versionTag: [number, number];
-  data: BytesLike;
-  plugin: string;
-  permissions: PermissionOperation[];
-  helpers: string[];
-};
-
 // PluginRepo, release, build
+// TODO: maybe find a way so it expects the address of specific plugin setups.
 export type PluginRepoPointer = [string, number, number];

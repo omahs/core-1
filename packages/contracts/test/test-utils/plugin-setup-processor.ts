@@ -1,7 +1,22 @@
 import {ethers} from 'hardhat';
 import {findEvent} from '../../utils/event';
 import {getMergedABI} from '../../utils/abi';
-import {PluginSetupProcessor, PluginRepoRegistry} from '../../typechain';
+import {
+  DAO,
+  PluginSetupProcessor,
+  PluginRepoRegistry,
+  PluginUUPSUpgradeableSetupV1Mock,
+  PluginUUPSUpgradeableSetupV1MockBad,
+  PluginUUPSUpgradeableSetupV2Mock,
+  PluginUUPSUpgradeableSetupV3Mock,
+  PluginUUPSUpgradeableSetupV4Mock,
+  PluginCloneableSetupV1Mock,
+  PluginCloneableSetupV2Mock,
+} from '../../typechain';
+
+// TODO: put in common or something.
+const EMPTY_DATA = '0x';
+
 import {BytesLike, utils, constants} from 'ethers';
 import {Operation} from '../core/permission/permission-manager';
 import {PermissionOperation, PluginRepoPointer} from './psp/types';
@@ -86,7 +101,6 @@ export async function prepareUninstallation(
   daoAddress: string,
   plugin: string,
   pluginRepoPointer: PluginRepoPointer,
-  permissions: PermissionOperation[],
   helpers: string[],
   data: BytesLike
 ): Promise<UninstallationPreparedEvent['args']> {
@@ -95,7 +109,6 @@ export async function prepareUninstallation(
     createPrepareUninstallationParams(
       plugin,
       pluginRepoPointer,
-      permissions,
       helpers,
       data
     )
@@ -119,6 +132,45 @@ export async function applyUninstallation(
 
   const event = await findEvent(tx, 'UninstallationApplied');
   return event.args;
+}
+
+export async function installPlugin(
+  psp: PluginSetupProcessor,
+  targetDao: DAO,
+  pluginRepoPointer: PluginRepoPointer,
+  data: BytesLike = EMPTY_DATA
+): Promise<{
+  plugin: string;
+  helpers: string[];
+  permissions: PermissionOperation[];
+  prepareSetupId: string;
+  installSetupId: string;
+}> {
+  let plugin: string;
+  let helpers: string[];
+  let permissions: PermissionOperation[];
+  let prepareSetupId: string;
+  ({
+    plugin: plugin,
+    preparedDependency: {helpers, permissions},
+    setupId: prepareSetupId,
+  } = await prepareInstallation(
+    psp,
+    targetDao.address,
+    pluginRepoPointer,
+    data
+  ));
+
+  const {setupId: installSetupId } = await applyInstallation(
+    psp,
+    targetDao.address,
+    plugin,
+    pluginRepoPointer,
+    permissions,
+    helpers
+  );
+
+  return {plugin, helpers, permissions, installSetupId, prepareSetupId};
 }
 
 export async function prepareUpdate(
